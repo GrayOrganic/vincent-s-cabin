@@ -3,124 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vincent Liu |  Portfolio</title>
+    <title>Vincent Liu - Portfolio 3D Experience</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <!-- 导航栏 -->
-    <nav id="navbar">
-        <div class="logo">Vincent.L</div>
-        <ul class="nav-links">
-            <li><a href="#about">About</a></li>
-            <li><a href="#projects">Projects</a></li>
-            <li><a href="#skills">Skills</a></li>
-            <li><a href="#contact">Contact</a></li>
-        </ul>
-    </nav>
 
-    <!-- 首页主视觉 -->
-    <header id="hero">
-        <div class="hero-content fade-in">
+    <!-- 交互提示：屏幕中心的准星/文字 -->
+    <div id="cursor-hint">Click the Door to Enter</div>
+
+    <!-- 3D 渲染画布容器 -->
+    <div id="canvas-container"></div>
+
+    <!-- UI 信息层 (进入木屋后显示) -->
+    <div id="ui-layer">
+        <div class="content">
             <h1>Hi, I'm <span class="highlight">Vincent Liu</span></h1>
-            <h2>(刘文想)</h2>
-            <p class="tagline" id="typing-text">Interactive Media Developer | 3D Artist | Researcher</p>
-            <a href="#projects" class="btn">View My Work</a>
-        </div>
-    </header>
+            <p class="tagline">Interactive Media Developer | 3D Artist | Researcher</p>
 
-    <!-- 个人简介 -->
-    <section id="about" class="section-padding">
-        <div class="container fade-in">
-            <h2 class="section-title">About Me</h2>
-            <p class="about-text">
-                I combine mathematical reasoning and system architecture with empathetic human-centered design.
-                My focus lies in utilizing technical mechanics to evoke specific emotional and cognitive responses,
-                viewing interactive software as a powerful analytical medium for accessibility, education, and cultural expression.
-            </p>
-        </div>
-    </section>
-
-    <!-- 项目展示 -->
-    <section id="projects" class="section-padding bg-alt">
-        <div class="container">
-            <h2 class="section-title fade-in">Selected Projects</h2>
-            <div class="project-grid">
-                <!-- 项目 1 -->
-                <div class="project-card fade-in">
-                    <div class="project-info">
-                        <h3>Voice Trail</h3>
-                        <p class="project-tags">Unity | Audio Spatilization | Accessibility</p>
-                        <p>An audio-guided 3D spatial sound delivery simulation game designed specifically for visually impaired children, developed with on-site user testing.</p>
-                    </div>
-                </div>
-                <!-- 项目 2 -->
-                <div class="project-card fade-in">
-                    <div class="project-info">
-                        <h3>Fireside Nightcast</h3>
-                        <p class="project-tags">C# | ESP32 | Hardware Integration</p>
-                        <p>A bio-feedback public speaking training system integrating an ADXL355 accelerometer with a Unity virtual campfire particle system.</p>
-                    </div>
-                </div>
-                <!-- 项目 3 -->
-                <div class="project-card fade-in">
-                    <div class="project-info">
-                        <h3>ShareGAN Aβ-PET Research</h3>
-                        <p class="project-tags">AI/ML | Medical Imaging</p>
-                        <p>Artificial intelligence research using the ShareGAN model to synthesize 3D Aβ-PET images from T1-weighted MRI scans for Alzheimer's disease diagnosis.</p>
-                    </div>
-                </div>
-                <!-- 项目 4 -->
-                <div class="project-card fade-in">
-                    <div class="project-info">
-                        <h3>Gallery of the Void</h3>
-                        <p class="project-tags">Unity | Custom Shaders | HLSL</p>
-                        <p>An educational top-down action game utilizing custom shaders and RYB subtractive color mixing mechanics to teach color theory.</p>
-                    </div>
-                </div>
+            <div class="section">
+                <h2>About Me</h2>
+                <p>I combine mathematical reasoning and system architecture with empathetic human-centered design. My focus lies in utilizing technical mechanics to evoke specific emotional and cognitive responses, viewing interactive software as a powerful analytical medium for accessibility, education, and cultural expression.</p>
             </div>
-        </div>
-    </section>
 
-    <!-- 技能树 -->
-    <section id="skills" class="section-padding">
-        <div class="container fade-in">
-            <h2 class="section-title">Technical Arsenal</h2>
-            <div class="skills-container">
-                <div class="skill-category">
-                    <h3>Development</h3>
-                    <p>C#, Unity Engine, Python, HLSL Shaders, ComputeBuffers</p>
-                </div>
-                <div class="skill-category">
-                    <h3>3D & Design</h3>
-                    <p>Blender, Maya, Autodesk Inventor, OpenVSP</p>
-                </div>
-                <div class="skill-category">
-                    <h3>Hardware</h3>
-                    <p>Arduino, ESP32, Sensor Integration, SPI Communication</p>
-                </div>
+            <div class="section">
+                <h2>Selected Projects</h2>
+                <ul>
+                    <li><strong>Voice Trail:</strong> Audio-guided 3D spatial sound delivery simulation game designed for visually impaired children.</li>
+                    <li><strong>Fireside Nightcast:</strong> Bio-feedback public speaking training system integrating an ADXL355 accelerometer.</li>
+                    <li><strong>ShareGAN Aβ-PET:</strong> AI research using ShareGAN to synthesize 3D images for Alzheimer's diagnosis.</li>
+                    <li><strong>Gallery of the Void:</strong> Educational action game utilizing custom shaders to teach color theory.</li>
+                </ul>
             </div>
+
+            <button class="btn" onclick="exitCabin()">Exit Cabin</button>
         </div>
-    </section>
+    </div>
 
-    <!-- 联系方式 -->
-    <section id="contact" class="section-padding bg-alt">
-        <div class="container fade-in text-center">
-            <h2 class="section-title">Let's Connect</h2>
-            <p>Always open to discussing interactive computing, game design, and research opportunities.</p>
-            <div class="social-links">
-                <a href="mailto:your.email@example.com" class="btn outline">Email Me</a>
-                <!-- 替换为你的真实链接 -->
-                <a href="#" class="btn outline">GitHub</a>
-                <a href="#" class="btn outline">LinkedIn</a>
-            </div>
-        </div>
-    </section>
+    <!-- 1. 引入 Three.js 核心与 GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
 
-    <footer>
-        <p>&copy; 2026 Vincent Liu. Built with code and coffee.</p>
-    </footer>
+    <!-- 2. 引入 Three.js 后处理依赖 -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
 
-    <script src="script.js"></script>
+    <!-- 3. 引入主逻辑 -->
+    <script src="app.js"></script>
 </body>
 </html>

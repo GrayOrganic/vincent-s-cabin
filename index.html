@@ -3,54 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vincent Liu - Portfolio 3D Experience</title>
+    <title>Vincent Liu - Interactive Portfolio</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Inter:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-    <!-- 交互提示：屏幕中心的准星/文字 -->
-    <div id="cursor-hint">Click the Door to Enter</div>
-
-    <!-- 3D 渲染画布容器 -->
     <div id="canvas-container"></div>
+    <div id="cursor-hint">CLICK GLOWING OBJECTS TO INTERACT</div>
+    <div id="hover-tooltip"></div>
 
-    <!-- UI 信息层 (进入木屋后显示) -->
-    <div id="ui-layer">
-        <div class="content">
-            <h1>Hi, I'm <span class="highlight">Vincent Liu</span></h1>
-            <p class="tagline">Interactive Media Developer | 3D Artist | Researcher</p>
-
-            <div class="section">
-                <h2>About Me</h2>
-                <p>I combine mathematical reasoning and system architecture with empathetic human-centered design. My focus lies in utilizing technical mechanics to evoke specific emotional and cognitive responses, viewing interactive software as a powerful analytical medium for accessibility, education, and cultural expression.</p>
-            </div>
-
-            <div class="section">
-                <h2>Selected Projects</h2>
-                <ul>
-                    <li><strong>Voice Trail:</strong> Audio-guided 3D spatial sound delivery simulation game designed for visually impaired children.</li>
-                    <li><strong>Fireside Nightcast:</strong> Bio-feedback public speaking training system integrating an ADXL355 accelerometer.</li>
-                    <li><strong>ShareGAN Aβ-PET:</strong> AI research using ShareGAN to synthesize 3D images for Alzheimer's diagnosis.</li>
-                    <li><strong>Gallery of the Void:</strong> Educational action game utilizing custom shaders to teach color theory.</li>
-                </ul>
-            </div>
-
-            <button class="btn" onclick="exitCabin()">Exit Cabin</button>
+    <div id="ui-panel">
+        <h1 id="project-title">Insert Cartridge</h1>
+        <p id="project-desc">Select a cartridge from the desk to view project details.</p>
+        <div id="project-tags"></div>
+        <div class="button-group">
+            <button id="play-btn" style="display: none;">▶ Play Game</button>
+            <button id="link-btn" style="display: none;">🔗 Visit Link</button>
+            <button id="eject-btn" style="display: none;" onclick="ejectCartridge()">⏏ Eject</button>
         </div>
     </div>
 
-    <!-- 1. 引入 Three.js 核心与 GSAP -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <!-- 游戏/网页 iframe 展示弹窗 -->
+    <div id="game-modal">
+        <button class="close-btn" onclick="closeGame(event)">✖ Close</button>
+        <iframe id="game-iframe" src="" frameborder="0" allow="autoplay; fullscreen"></iframe>
+    </div>
 
-    <!-- 2. 引入 Three.js 后处理依赖 -->
+    <!-- 独立 3D 模型交互画廊弹窗 -->
+    <div id="model-modal">
+        <button class="close-btn" onclick="closeModelViewer(event)" style="z-index: 9999; pointer-events: auto; position: absolute;">✖ Close</button>
+        <button class="nav-btn left" onclick="prevModel(event)">&#10094;</button>
+        <button class="nav-btn right" onclick="nextModel(event)">&#10095;</button>
+        <div id="model-info">
+            <h2 id="gallery-title">Model Title</h2>
+            <p id="gallery-desc">Model Description...</p>
+        </div>
+        <div id="viewer-canvas-container"></div>
+        <div class="viewer-hint">Drag to Rotate | Scroll to Zoom</div>
+    </div>
+
+    <!-- 新增：关于我弹窗 (双图排版) -->
+    <div id="about-modal">
+        <button class="close-btn" onclick="closeAbout(event)" style="z-index: 9999; pointer-events: auto; position: absolute;">✖ Close</button>
+        <div class="about-content">
+
+            <!-- 📷 双图片组 -->
+            <div class="about-images">
+                <img src="avatar.jpg" alt="Avatar" class="about-img">
+                <img src="selfie1.jpg" alt="Selfie" class="about-img">
+                <img src="selfie2.jpg" alt="Selfie" class="about-img">
+            </div>
+
+            <h2 class="about-title">Vincent Liu</h2>
+            <p class="about-subtitle">Digital Media Designer & Developer</p>
+
+            <div class="about-text">
+                <ul class="about-list">
+                    <li>Hi and welcome to my Cabin! This is where I show some of my works.</li>
+                    <li>I specialize in 3D digital modeling, shader programming and game development.</li>
+                    <li>I am the founder and president of the SDSZ Game Design & Analysis Club.</li>
+                    <li>I hope to bridge rigorous mathematical engineering with human-centered interactive experiences.</li>
+                </ul>
+            </div>
+
+            <div class="button-group" style="flex-direction: row; justify-content: center; gap: 20px; margin-top: 30px;">
+                <button onclick="window.open('#', '_blank')">Resume</button>、
+                <button onclick="window.open('#', '_blank')">Portfolio</button>
+                <button onclick="window.open('#', '_blank')">Contact</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 核心依赖 ================= -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
-
-    <!-- 3. 引入主逻辑 -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

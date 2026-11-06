@@ -1,0 +1,159 @@
+[
+    {
+        "id": "cart_1",
+        "name": "One Billion Seconds",
+        "color": "0xff4444",
+        "desc": "Incremental Game Entry for GMTK Game Jam 2026. Your goal is to make the timer countdown to zero!",
+        "tags": "Unity | Solo Development",
+        "hasGame": true,
+        "link": "https://grayorganic.itch.io/billion-seconds",
+        "gameUrl": "https://itch.io/embed-upload/18656643?color=1e1e1e",
+        "screenMedia": [
+            "videos/cart_1/屏幕截图 2026-10-07 192851.png",
+            "videos/cart_1/屏幕截图 2026-10-07 193036.png",
+            "videos/cart_1/屏幕截图 2026-10-24 175835.png",
+            "videos/cart_1/屏幕截图 2026-10-24 180450.png",
+            "videos/cart_1/屏幕截图 2026-10-24 180734.png",
+            "videos/cart_1/屏幕截图 2026-11-06 102440.png"
+        ],
+        "hasModel": true,
+        "previewModel": "preview_models/cart_1.glb"
+    },
+    {
+        "id": "cart_2",
+        "name": "Gallery of the Void",
+        "color": "0x44ff44",
+        "desc": "A 3D action game for color-matching combat, aimed at providing immersive color education.",
+        "tags": "Unity | Custom Shaders | HLSL",
+        "hasGame": true,
+        "link": "https://grayorganic.itch.io/gallery",
+        "gameUrl": "https://itch.io/embed-upload/18975068?color=505050",
+        "screenMedia": [
+            "videos/cart_2/屏幕截图 2026-08-08 121756.png",
+            "videos/cart_2/屏幕截图 2026-08-08 172040.png",
+            "videos/cart_2/屏幕截图 2026-08-08 180206.png",
+            "videos/cart_2/屏幕截图 2026-08-21 162133.png",
+            "videos/cart_2/屏幕截图 2026-08-25 184512.png",
+            "videos/cart_2/屏幕截图 2026-08-27 114119.png",
+            "videos/cart_2/屏幕截图 2026-08-27 114142.png",
+            "videos/cart_2/屏幕截图 2026-08-27 114218.png",
+            "videos/cart_2/屏幕截图 2026-08-27 205433.png",
+            "videos/cart_2/屏幕截图 2026-08-27 205750.png"
+        ],
+        "hasModel": false
+    },
+    {
+        "id": "cart_3",
+        "name": "Fireside Nightcast",
+        "color": "0x4444ff",
+        "desc": "Wearable Voice Feedback for Public Speaking Practice integrating an ADXL355 accelerometer.",
+        "tags": "Hardware | HCI | Unity",
+        "hasGame": false,
+        "link": "https://youtu.be/vedwBhKqD7I",
+        "screenMedia": [
+            "videos/cart_3/屏幕截图 2026-10-04 133912.png",
+            "videos/cart_3/屏幕截图 2026-10-04 133950.png",
+            "videos/cart_3/屏幕截图 2026-10-04 134015.png",
+            "videos/cart_3/屏幕截图 2026-10-08 103123.png",
+            "videos/cart_3/屏幕截图 2026-10-15 114916.png",
+            "videos/cart_3/屏幕截图 2026-10-29 171316.png"
+        ],
+        "hasModel": false
+    },
+    {
+        "id": "cart_4",
+        "name": "Rendering Practice",
+        "color": "0xffaa00",
+        "desc": "Stylized Rendering Practice, Mass GPU Rendering Via Compute Shader.",
+        "tags": "Unity | Blender | Compute Shader",
+        "hasGame": false,
+        "link": "https://youtu.be/pL5iWEnXpMc",
+        "screenMedia": [
+            "videos/cart_4/屏幕截图 2026-10-29 113523.png",
+            "videos/cart_4/屏幕截图 2026-10-29 113614.png",
+            "videos/cart_4/屏幕截图 2026-10-29 113735.png",
+            "videos/cart_4/屏幕截图 2026-10-29 113910.png"
+        ],
+        "hasModel": false
+    },
+    {
+        "id": "cart_5",
+        "name": "HosPal",
+        "color": "0x00d2ff",
+        "desc": "AR Hospital Companion application designed for pediatric hospital waiting rooms.",
+        "tags": "Unity | Blender | ConvAI",
+        "hasGame": false,
+        "link": "https://youtu.be/BR2YlF0uZDA",
+        "screenMedia": "videos/cart_5/com.oculus.vrshell-20251216-004948-0.mp4",
+        "hasModel": false
+    },
+    {
+        "id": "cart_6",
+        "name": "A Day of Light",
+        "color": "0xff44aa",
+        "desc": "2D Puzzle Solving Game created at Games for Good Jam simulating visual impairment.",
+        "tags": "Unity | Games for Good",
+        "hasGame": true,
+        "link": "https://youtu.be/oOR-0E-H0so",
+        "gameUrl": "https://itch.io/embed-upload/15692602?color=9e2835",
+        "screenMedia": [
+            "videos/cart_6/屏幕截图 2026-01-27 145148.png",
+            "videos/cart_6/屏幕截图 2026-01-27 145501.png",
+            "videos/cart_6/屏幕截图 2026-01-27 145537.png",
+            "videos/cart_6/屏幕截图 2026-01-27 145836.png",
+            "videos/cart_6/屏幕截图 2026-01-27 145931.png",
+            "videos/cart_6/屏幕截图 2026-01-31 145140.png"
+        ],
+        "hasModel": false
+    },
+    {
+        "id": "cart_7",
+        "name": "Voice Trail",
+        "color": "0x44ffff",
+        "desc": "Audio-guided 3D spatial delivery simulation game for visually impaired players.",
+        "tags": "Unity | Accessibility | Spatial Audio",
+        "hasGame": false,
+        "link": "https://youtu.be/foI2awfdyEc",
+        "screenMedia": [
+            "videos/cart_7/屏幕截图 2026-10-21 023142.png",
+            "videos/cart_7/屏幕截图 2026-10-21 030557.png",
+            "videos/cart_7/屏幕截图 2026-10-21 113023.png",
+            "videos/cart_7/屏幕截图 2026-10-21 113328.png",
+            "videos/cart_7/屏幕截图 2026-10-21 113819.png",
+            "videos/cart_7/屏幕截图 2026-10-28 225041.png",
+            "videos/cart_7/屏幕截图 2026-10-28 225152.png"
+        ],
+        "hasModel": false
+    },
+    {
+        "id": "cart_8",
+        "name": "Twice the Height",
+        "color": "0xaa44ff",
+        "desc": "Dual Character Platformer.",
+        "tags": "Unity | Aseprite | Pixel Art",
+        "hasGame": true,
+        "link": "https://youtu.be/7jTnZEkz3o8",
+        "gameUrl": "https://itch.io/embed-upload/16307694?color=333333",
+        "screenMedia": [
+            "videos/cart_8/屏幕截图 2026-01-30 181749.png",
+            "videos/cart_8/屏幕截图 2026-01-30 192242.png"
+        ],
+        "hasModel": false
+    },
+    {
+        "id": "cart_9",
+        "name": "Looped Circuit",
+        "color": "0xaa44ff",
+        "desc": "Puzzle Solving Game Entry for GMTK 2025.",
+        "tags": "Unity | Aseprite | Pixel Art",
+        "hasGame": true,
+        "gameUrl": "https://itch.io/embed-upload/14517657?color=71a3e4",
+        "screenMedia": [
+            "videos/cart_9/屏幕截图 2026-11-06 102845.png",
+            "videos/cart_9/屏幕截图 2026-11-06 102859.png",
+            "videos/cart_9/屏幕截图 2026-11-06 102914.png"
+        ],
+        "hasModel": false
+    }
+
+]

@@ -1,0 +1,82 @@
+[
+    {
+        "url": "preview_models/Boss.glb",
+        "title": "The Magnum Opus",
+        "desc": "Final boss of Gallery of the Void"
+    },
+    {
+        "url": "preview_models/Campfire.glb",
+        "title": "Campfire",
+        "desc": "Campfire base model for Fireside Nightcast."
+    },
+    {
+        "url": "preview_models/cart_1.glb",
+        "title": "Cart",
+        "desc": "Cartridge model"
+    },
+    {
+        "url": "preview_models/Chandelier.glb",
+        "title": "Chandelier",
+        "desc": "Chandelier model for Gallery of the Void"
+    },
+    {
+        "url": "preview_models/Character2.glb",
+        "title": "Iris",
+        "desc": "Main Character of Gallery of the Void"
+    },
+    {
+        "url": "preview_models/Controller.glb",
+        "title": "Controller",
+        "desc": "Controller model of One Billion Seconds"
+    },
+    {
+        "url": "preview_models/golem.glb",
+        "title": "Golem",
+        "desc": "Golem enemy of Gallery of the Void"
+    },
+    {
+        "url": "preview_models/LandscapeLandOnly.glb",
+        "title": "Landscape",
+        "desc": "Landscape model for rendering practice."
+    },
+    {
+        "url": "preview_models/Light_Number.glb",
+        "title": "Nixie Tube Container",
+        "desc": "Nixie Tube model from One Billion Seconds"
+    },
+    {
+        "url": "preview_models/LootChest.glb",
+        "title": "Loot Chest",
+        "desc": "Reward chest model from One Billion Seconds"
+    },
+    {
+        "url": "preview_models/Maze.glb",
+        "title": "Maze",
+        "desc": "Maze model, inspired by House of Leaves"
+    },
+    {
+        "url": "preview_models/Note.glb",
+        "title": "Note",
+        "desc": "Sticky note model from One Billion Seconds"
+    },
+    {
+        "url": "preview_models/Oak.glb",
+        "title": "Oak",
+        "desc": "Oak tree model from render practice"
+    },
+    {
+        "url": "preview_models/Tape.glb",
+        "title": "Tape Player",
+        "desc": "Tape player model from Fireside Nightcast"
+    },
+    {
+        "url": "preview_models/TheModel.glb",
+        "title": "Character Model Practice",
+        "desc": "Character model made at the ESAP summer program, under Dr. Mark Langeveld's guidance."
+    },
+    {
+        "url": "preview_models/Tree.glb",
+        "title": "Pine Tree",
+        "desc": "Pine tree model from Fireside Nightcast"
+    }
+]

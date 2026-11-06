@@ -135,7 +135,7 @@ function addBreathingGlow(obj, maxIntensity = 0.25) {
     obj.traverse(child => {
         if (child.isMesh && child.material && !child.name.includes('Hitbox')) {
             child.material = child.material.clone();
-            child.material.emissive = new THREE.Color(0xff7a00);
+            child.material.emissive = new THREE.Color(0x287574);
             child.material.emissiveIntensity = 0;
 
             gsap.to(child.material, {

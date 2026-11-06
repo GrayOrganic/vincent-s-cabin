@@ -43,16 +43,16 @@
         <div class="viewer-hint">Drag to Rotate | Scroll to Zoom</div>
     </div>
 
-    <!-- 新增：关于我弹窗 (双图排版) -->
+    <!-- 关于我弹窗 (深色双图错落排版) -->
     <div id="about-modal">
         <button class="close-btn" onclick="closeAbout(event)" style="z-index: 9999; pointer-events: auto; position: absolute;">✖ Close</button>
         <div class="about-content">
 
-            <!-- 📷 双图片组 -->
+            <!-- 📷 图片组：分离类名以便独立控制大小 -->
             <div class="about-images">
-                <img src="avatar.jpg" alt="Avatar" class="about-img">
-                <img src="selfie1.jpg" alt="Selfie" class="about-img">
-                <img src="selfie2.jpg" alt="Selfie" class="about-img">
+                <img src="avatar.jpg" alt="Avatar" class="about-img avatar-img">
+                <img src="selfie1.jpg" alt="Selfie" class="about-img selfie-img">
+                <img src="selfie2.jpg" alt="Selfie" class="about-img selfie-img">
             </div>
 
             <h2 class="about-title">Vincent Liu</h2>
@@ -68,9 +68,9 @@
             </div>
 
             <div class="button-group" style="flex-direction: row; justify-content: center; gap: 20px; margin-top: 30px;">
-                <button onclick="window.open('#', '_blank')">Resume</button>
-                <button onclick="window.open('#', '_blank')">Portfolio</button>
-                <button onclick="window.open('#', '_blank')">Contact</button>
+                <button onclick="window.open('https://drive.google.com/file/d/1INGXJNyGUpwMqebpfE-aaZny4bwrVr3N/view?usp=sharing', '_blank')">Resume</button>
+                <button onclick="window.open('https://drive.google.com/file/d/1sl6D_7HMbFgq3G6Pa4DzoUZmGOo4SAMT/view?usp=sharing', '_blank')">Portfolio</button>
+                <button onclick="window.location.href='mailto:你的真实邮箱@example.com'">Contact</button>
             </div>
         </div>
     </div>

@@ -143,16 +143,21 @@ async function initApp() {
             if (child.isMesh) {
                 const meshName = child.name;
                 const parentName = child.parent ? child.parent.name : "";
-
                 const sortedKeys = Object.keys(INTERACT_MSGS).sort((a, b) => b.length - a.length);
 
                 for (let key of sortedKeys) {
                     const matchPattern = (name, k) => name === k || name.startsWith(k + '.') || name.startsWith(k + '_');
 
                     if (matchPattern(meshName, key) || matchPattern(parentName, key)) {
-                        child.userData.message = INTERACT_MSGS[key];
-                        child.userData.baseScale = child.scale.clone();
-                        interactTriggers.push(child);
+                        let interactRoot = matchPattern(parentName, key) ? child.parent : child;
+
+                        if (!interactRoot.userData.message) {
+                            interactRoot.userData.message = INTERACT_MSGS[key];
+                            interactRoot.userData.baseScale = interactRoot.scale.clone();
+                            interactTriggers.push(interactRoot);
+                        }
+
+                        child.userData.parentInteract = interactRoot;
                         break;
                     }
                 }
@@ -248,8 +253,9 @@ window.addEventListener('mousemove', (event) => {
         gsap.to(aboutTrigger.scale, { x: aboutTrigger.userData.baseScale.x * scaleMult, y: aboutTrigger.userData.baseScale.y * scaleMult, z: aboutTrigger.userData.baseScale.z * scaleMult, duration: 0.2 });
     }
 
-    // 3. 互动文字物体
-    const hitInteract = interactTriggers.length > 0 ? raycaster.intersectObjects(interactTriggers, true)[0]?.object : null;
+    const interactIntersects = raycaster.intersectObjects(interactTriggers, true);
+    const hitInteract = interactIntersects.find(hit => hit.object.userData && hit.object.userData.parentInteract)?.object.userData.parentInteract;
+
     interactTriggers.forEach(obj => {
         const isThisHit = (hitInteract === obj);
         const scaleMult = isThisHit ? 1.05 : 1.0;
@@ -312,7 +318,9 @@ window.addEventListener('click', (event) => {
         tooltip.style.opacity = 0; document.body.style.cursor = 'default'; openAboutModal(); return;
     }
 
-    const hitInteract = interactTriggers.length > 0 ? raycaster.intersectObjects(interactTriggers, true)[0]?.object : null;
+    const interactIntersects = raycaster.intersectObjects(interactTriggers, true);
+    const hitInteract = interactIntersects.find(hit => hit.object.userData && hit.object.userData.parentInteract)?.object.userData.parentInteract;
+
     if (hitInteract) {
         showToast(hitInteract.userData.message);
         return;

@@ -6,7 +6,7 @@
         "desc": "Incremental Game Entry for GMTK Game Jam 2026. Your goal is to make the timer countdown to zero!",
         "tags": "Unity | Solo Development",
         "hasGame": true,
-        "link": "https://grayorganic.itch.io/billion-seconds",
+        "itchLink": "https://grayorganic.itch.io/billion-seconds",
         "gameUrl": "https://itch.io/embed-upload/18656643?color=1e1e1e",
         "screenMedia": [
             "videos/cart_1/屏幕截图 2026-10-07 192851.png",
@@ -26,7 +26,8 @@
         "desc": "A 3D action game for color-matching combat, aimed at providing immersive color education.",
         "tags": "Unity | Custom Shaders | HLSL",
         "hasGame": true,
-        "link": "https://grayorganic.itch.io/gallery",
+        "itchLink": "https://grayorganic.itch.io/gallery",
+        "link": "https://youtu.be/Wly6Ue48-ew",
         "gameUrl": "https://itch.io/embed-upload/18975068?color=505050",
         "screenMedia": [
             "videos/cart_2/屏幕截图 2026-08-08 121756.png",
@@ -50,14 +51,7 @@
         "tags": "Hardware | HCI | Unity",
         "hasGame": false,
         "link": "https://youtu.be/vedwBhKqD7I",
-        "screenMedia": [
-            "videos/cart_3/屏幕截图 2026-10-04 133912.png",
-            "videos/cart_3/屏幕截图 2026-10-04 133950.png",
-            "videos/cart_3/屏幕截图 2026-10-04 134015.png",
-            "videos/cart_3/屏幕截图 2026-10-08 103123.png",
-            "videos/cart_3/屏幕截图 2026-10-15 114916.png",
-            "videos/cart_3/屏幕截图 2026-10-29 171316.png"
-        ],
+        "screenMedia": "videos/cart_3/2026-10-24 20-22-08.mp4",
         "hasModel": false
     },
     {
@@ -94,6 +88,7 @@
         "desc": "2D Puzzle Solving Game created at Games for Good Jam simulating visual impairment.",
         "tags": "Unity | Games for Good",
         "hasGame": true,
+        "itchLink": "https://grayorganic.itch.io/a-day-of-light",
         "link": "https://youtu.be/oOR-0E-H0so",
         "gameUrl": "https://itch.io/embed-upload/15692602?color=9e2835",
         "screenMedia": [
@@ -133,10 +128,13 @@
         "tags": "Unity | Aseprite | Pixel Art",
         "hasGame": true,
         "link": "https://youtu.be/7jTnZEkz3o8",
+        "itchLink": "https://grayorganic.itch.io/twice-the-height",
         "gameUrl": "https://itch.io/embed-upload/16307694?color=333333",
         "screenMedia": [
             "videos/cart_8/屏幕截图 2026-01-30 181749.png",
-            "videos/cart_8/屏幕截图 2026-01-30 192242.png"
+            "videos/cart_8/屏幕截图 2026-01-30 192242.png",
+            "videos/cart_8/屏幕截图 2026-11-07 012713.png",
+            "videos/cart_8/屏幕截图 2026-11-07 012830.png"
         ],
         "hasModel": false
     },
@@ -146,6 +144,7 @@
         "color": "0xaa44ff",
         "desc": "Puzzle Solving Game Entry for GMTK 2025.",
         "tags": "Unity | Aseprite | Pixel Art",
+        "itchLink": "https://grayorganic.itch.io/loopedcircuit",
         "hasGame": true,
         "gameUrl": "https://itch.io/embed-upload/14517657?color=71a3e4",
         "screenMedia": [
@@ -155,5 +154,4 @@
         ],
         "hasModel": false
     }
-
 ]

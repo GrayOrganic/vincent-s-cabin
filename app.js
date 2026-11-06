@@ -38,7 +38,7 @@ const LIGHT_CONFIG = {
         ambientColor: 0x4a433e,
         ambientIntensity: 0.9,
         spotColor: 0xfac878,
-        spotIntensity: 2.0,
+        spotIntensity: 1.5,
         posX: 0, posY: 15, posZ: 8
     },
     viewer: { ambientIntensity: 0.3, dirIntensity: 1.5, posX: 5, posY: 10, posZ: 5, fillIntensity: 0.4, fillPosX: -3, fillPosY: 2, fillPosZ: 5 },
@@ -137,14 +137,6 @@ function addBreathingGlow(obj, maxIntensity = 0.25) {
     });
 }
 
-const debugUI = document.createElement('div');
-debugUI.style.position = 'absolute'; debugUI.style.top = '10px'; debugUI.style.left = '10px';
-debugUI.style.color = '#fff'; debugUI.style.backgroundColor = 'rgba(0,0,0,0.85)';
-debugUI.style.padding = '15px'; debugUI.style.borderRadius = '6px'; debugUI.style.zIndex = '9999';
-debugUI.style.fontFamily = 'monospace'; debugUI.style.pointerEvents = 'none';
-debugUI.innerHTML = '🔄 系统初始化中...';
-document.body.appendChild(debugUI);
-
 async function initApp() {
     try {
         let projectsData = [];
@@ -152,10 +144,9 @@ async function initApp() {
         try { previewModelsList = await (await fetch('preview_models.json')).json(); } catch (e) {}
 
         const loader = new THREE.GLTFLoader();
-        const loadWithProgress = (url) => loader.loadAsync(url, (xhr) => { if (xhr.total > 0) debugUI.innerHTML = `🔄 模型下载: ${Math.round((xhr.loaded / xhr.total) * 100)}%`; });
 
         const [mainSceneGltf, cartGltf] = await Promise.all([
-            loadWithProgress('models/main_scene.glb'),
+            loader.loadAsync('models/main_scene.glb'),
             loader.loadAsync('models/cartridge.glb')
         ]);
 
@@ -261,9 +252,6 @@ async function initApp() {
             }
         });
 
-        debugUI.innerHTML = `✅ <b>加载完毕</b>`;
-        setTimeout(() => debugUI.style.display = 'none', 3000);
-
         const cartPrefab = cartGltf.scene;
         cartPrefab.scale.set(GLOBAL_SCALE, GLOBAL_SCALE, GLOBAL_SCALE);
 
@@ -293,7 +281,9 @@ async function initApp() {
             scene.add(cartClone);
             cartridges.push(cartClone);
         });
-    } catch (error) { debugUI.innerHTML = `❌ <b>错误！</b><br>${error.message}`; debugUI.style.color = '#ff4444'; }
+    } catch (error) {
+        console.error("模型加载发生错误:", error);
+    }
 }
 initApp();
 

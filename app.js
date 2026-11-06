@@ -19,11 +19,7 @@ document.getElementById('canvas-container').appendChild(renderer.domElement);
 const GLOBAL_SCALE = 15.0;
 const ANIM_CONFIG = { hoverOut: 0.05, pullOut: 0.2, liftHeight: 0.2, ejectHover: 0.1, parallaxX: 0.4, parallaxY: 0.3 };
 
-// ==========================================
-// 💬 互动文本配置 (环境叙事核心)
-// ==========================================
-// 格式："Blender里的物体名称" : "你点击后想显示的文字"
-// 只要名字包含前面的关键词就会触发，你可以随时在这里增减！
+
 const INTERACT_MSGS = {
     "Microphone": "I record most of my voice on it.",
     "Coffee": "Still warm. ",

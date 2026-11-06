@@ -1,6 +1,3 @@
-// ==========================================
-// 1. 场景基础设置与 🌟 核心质感升级 🌟
-// ==========================================
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0a0a10);
 
@@ -20,9 +17,6 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-// ==========================================
-// 2. 全局状态与配置中枢
-// ==========================================
 const GLOBAL_SCALE = 15.0;
 
 const ANIM_CONFIG = { hoverOut: 0.05, pullOut: 0.2, liftHeight: 0.2, ejectHover: 0.1, parallaxX: 0.4, parallaxY: 0.3 };
@@ -55,9 +49,6 @@ const LIGHT_CONFIG = {
     }
 };
 
-// ==========================================
-// 3. 应用主场景光照与特效
-// ==========================================
 const ambientLight = new THREE.AmbientLight(LIGHT_CONFIG.main.ambientColor, LIGHT_CONFIG.main.ambientIntensity);
 scene.add(ambientLight);
 
@@ -96,9 +87,6 @@ const composer = new THREE.EffectComposer(renderer);
 composer.addPass(renderScene);
 composer.addPass(bloomPass);
 
-// ==========================================
-// 4. 变量、媒体加载器与视觉增强
-// ==========================================
 const cartridges = [];
 let activeCartridge = null;
 let hoveredCartridge = null;
@@ -149,9 +137,6 @@ function addBreathingGlow(obj, maxIntensity = 0.25) {
     });
 }
 
-// ==========================================
-// 5. 异步核心加载系统
-// ==========================================
 const debugUI = document.createElement('div');
 debugUI.style.position = 'absolute'; debugUI.style.top = '10px'; debugUI.style.left = '10px';
 debugUI.style.color = '#fff'; debugUI.style.backgroundColor = 'rgba(0,0,0,0.85)';
@@ -312,9 +297,6 @@ async function initApp() {
 }
 initApp();
 
-// ==========================================
-// 6. 交互逻辑
-// ==========================================
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2(0, 0);
 const tooltip = document.getElementById('hover-tooltip');
@@ -461,9 +443,6 @@ window.addEventListener('click', (event) => {
     }
 });
 
-// ==========================================
-// 7. 加载卡带系统
-// ==========================================
 function loadCartridge(newCartridge) {
     if (activeCartridge) ejectCartridge(false);
     activeCartridge = newCartridge;
@@ -567,9 +546,6 @@ window.ejectCartridge = function(clearUI = true) {
       .to(cart.position, { x: cart.userData.initialPosition.x, z: cart.userData.initialPosition.z, duration: 0.25 });
 };
 
-// ==========================================
-// 8. UI 控制
-// ==========================================
 function updateUI(data) {
     const ui = document.getElementById('ui-panel');
     document.getElementById('project-title').innerText = data.name;
@@ -612,9 +588,6 @@ window.closeAbout = function(event) {
     document.getElementById('about-modal').style.display = 'none';
 };
 
-// ==========================================
-// 9. 独立 3D 模型画廊系统
-// ==========================================
 let viewerScene, viewerCamera, viewerRenderer, viewerControls;
 let viewerInitialized = false;
 let viewerAnimationId = null;
@@ -684,15 +657,15 @@ function loadPreviewModel(modelDataObj) {
         },
         undefined,
         (error) => {
-            console.error("模型加载报错:", error);
-            hintEl.innerText = `❌ 加载失败! 无法读取文件: ${modelUrl}`;
+            console.error(error);
+            hintEl.innerText = `加载失败! 无法读取文件: ${modelUrl}`;
         }
     );
 }
 
 window.openModelViewer = function() {
     if (previewModelsList.length === 0) {
-        alert("画廊是空的！请将 .glb 模型放入 preview_models 文件夹并运行 update_preview.py 脚本。");
+        alert("画廊是空的！");
         return;
     }
     document.getElementById('model-modal').style.display = 'flex';
@@ -727,9 +700,6 @@ function animateViewer() {
     viewerRenderer.render(viewerScene, viewerCamera);
 }
 
-// ==========================================
-// 10. 主场景渲染循环与窗口适配
-// ==========================================
 function animate() {
     requestAnimationFrame(animate);
     const targetX = baseCameraPos.x + (mouse.x * ANIM_CONFIG.parallaxX);

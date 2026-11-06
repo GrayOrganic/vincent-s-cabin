@@ -33,9 +33,9 @@ const INTERACT_MSGS = {
 const BLOOM_CONFIG = { strength: 0.1, radius: 0.2, threshold: 0.3, idleIntensity: 0.05, activeIntensity: 0.05, idleColor: 0x00d2ff, activeColor: 0x000000, glassOpacity: 0.2, screenIntensity: 0.2 };
 
 const LIGHT_CONFIG = {
-    main: { ambientColor: 0xa89677, ambientIntensity: 0.5, spotColor: 0xfac878, spotIntensity: 1.5, posX: 0, posY: 15, posZ: 8 },
+    main: { ambientColor: 0xa89677, ambientIntensity: 0.5, spotColor: 0xfac878, spotIntensity: 1.2, posX: 0, posY: 15, posZ: 10 },
     viewer: { ambientIntensity: 0.3, dirIntensity: 1.5, posX: 5, posY: 10, posZ: 5, fillIntensity: 0.4, fillPosX: -3, fillPosY: 2, fillPosZ: 5 },
-    sun: { color: 0xffa95c, intensity: 4, posX: -4, posY: 15, posZ: -20 }
+    sun: { color: 0xffa95c, intensity: 4, posX: -4, posY: 20, posZ: -20 }
 };
 
 const ambientLight = new THREE.AmbientLight(LIGHT_CONFIG.main.ambientColor, LIGHT_CONFIG.main.ambientIntensity);

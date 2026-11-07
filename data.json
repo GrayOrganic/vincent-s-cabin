@@ -62,12 +62,7 @@
         "tags": "Unity | Blender | Compute Shader",
         "hasGame": false,
         "link": "https://youtu.be/pL5iWEnXpMc",
-        "screenMedia": [
-            "videos/cart_4/屏幕截图 2026-10-29 113523.png",
-            "videos/cart_4/屏幕截图 2026-10-29 113614.png",
-            "videos/cart_4/屏幕截图 2026-10-29 113735.png",
-            "videos/cart_4/屏幕截图 2026-10-29 113910.png"
-        ],
+        "screenMedia": "videos/cart_4/屏幕截图 2026-10-29 113614.png",
         "hasModel": false
     },
     {
@@ -151,6 +146,22 @@
             "videos/cart_9/屏幕截图 2026-11-06 102845.png",
             "videos/cart_9/屏幕截图 2026-11-06 102859.png",
             "videos/cart_9/屏幕截图 2026-11-06 102914.png"
+        ],
+        "hasModel": false
+    },
+    {
+        "id": "cart_10",
+        "name": "Welcome!",
+        "color": "0xaa44ff",
+        "desc": "Welcome to my cabin, have a look around!",
+        "screenMedia": [
+            "videos/cart_10/1fb085e19be470d4ac7c0bd40f94835.png",
+            "videos/cart_10/4f01df26407736f6bf60d3674df79c7.png",
+            "videos/cart_10/71c82082ca5871002893682843e0e0f.png",
+            "videos/cart_10/b2cda8bfca3f987406fa452d429908e.png",
+            "videos/cart_10/bae89ef687f28ee6171f2da9c9cf0d3.png",
+            "videos/cart_10/ce88b68b4a105fd8778a04d25332660.png",
+            "videos/cart_10/微信图片_20261005201046.png"
         ],
         "hasModel": false
     }

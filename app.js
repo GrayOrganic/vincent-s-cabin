@@ -8,7 +8,6 @@ camera.position.copy(baseCameraPos);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
@@ -17,9 +16,11 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
 const GLOBAL_SCALE = 15.0;
-const ANIM_CONFIG = { hoverOut: 0.05, pullOut: 0.2, liftHeight: 0.2, ejectHover: 0.1, parallaxX: 0.4, parallaxY: 0.3 };
+const ANIM_CONFIG = { hoverOut: 0.12, pullOut: 0.2, liftHeight: 0.2, ejectHover: 0.1, parallaxX: 0.4, parallaxY: 0.3 };
 
-
+// ==========================================
+// 💬 互动文本配置 (环境叙事核心)
+// ==========================================
 const INTERACT_MSGS = {
     "Microphone": "I record most of my voice on it.",
     "Coffee": "Still warm.",
@@ -59,8 +60,12 @@ const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth,
 const composer = new THREE.EffectComposer(renderer);
 composer.addPass(renderScene); composer.addPass(bloomPass);
 
+// 核心互动数据结构
 const cartridges = [];
 const interactTriggers = [];
+const wallFrames = [];
+let framesHidden = true;
+
 let activeCartridge = null, hoveredCartridge = null, hoveredInteractObj = null;
 let triggerObject = null, aboutTrigger = null;
 let previewModelsList = [], currentModelIndex = 0;
@@ -97,7 +102,36 @@ function showToast(message) {
     toast.innerText = message;
     toast.classList.add('show');
     if (toastTimeout) clearTimeout(toastTimeout);
-    toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 4000);
+    toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 1500);
+}
+
+// ==========================================
+// 📺 独立出来的媒体激活函数 (用于初始化和切换)
+// ==========================================
+function activateCartridgeMedia(cart) {
+    if (!cart) return;
+    if (tvScreenMat) {
+        const mediaData = cart.userData;
+        tvScreenMat.color.setHex(0xffffff);
+        if (glassMat) { glassMat.emissive.setHex(BLOOM_CONFIG.activeColor); glassMat.emissiveIntensity = BLOOM_CONFIG.activeIntensity; }
+
+        if (mediaData.screenMedia) {
+            const mediaList = Array.isArray(mediaData.screenMedia) ? mediaData.screenMedia : [mediaData.screenMedia];
+            if (mediaList.length === 1 && mediaList[0].match(/\.(mp4|webm)$/i)) {
+                tvVideo.src = mediaList[0]; tvVideo.play();
+                tvVideo.onloadedmetadata = () => { fitMediaToScreen(tvVideoTexture); tvScreenMat.map = tvVideoTexture; tvScreenMat.emissive = new THREE.Color(0xffffff); tvScreenMat.emissiveMap = tvVideoTexture; tvScreenMat.emissiveIntensity = BLOOM_CONFIG.screenIntensity; tvScreenMat.needsUpdate = true; };
+            } else {
+                let currentIndex = 0;
+                const loadAndShowImage = (url) => { textureLoader.load(url, (tex) => { fitMediaToScreen(tex); tvScreenMat.map = tex; tvScreenMat.emissive = new THREE.Color(0xffffff); tvScreenMat.emissiveMap = tex; tvScreenMat.emissiveIntensity = BLOOM_CONFIG.screenIntensity; tvScreenMat.needsUpdate = true; }); };
+                loadAndShowImage(mediaList[0]);
+                if (mediaList.length > 1) { slideshowInterval = setInterval(() => { currentIndex = (currentIndex + 1) % mediaList.length; loadAndShowImage(mediaList[currentIndex]); }, 3000); }
+            }
+        } else {
+            tvScreenMat.map = null; tvScreenMat.emissiveMap = null; tvScreenMat.color.setHex(BLOOM_CONFIG.activeColor); tvScreenMat.emissive.setHex(BLOOM_CONFIG.activeColor); tvScreenMat.emissiveIntensity = BLOOM_CONFIG.screenIntensity;
+        }
+        tvScreenMat.needsUpdate = true;
+    }
+    updateUI(cart.userData);
 }
 
 // ⏳ 获取加载界面的 DOM 元素
@@ -112,10 +146,9 @@ async function initApp() {
         try { projectsData = await (await fetch('data.json')).json(); } catch (e) {}
         try { previewModelsList = await (await fetch('preview_models.json')).json(); } catch (e) {}
 
-        // 🆕 配置 DRACO 解压器 (主场景)
+        // 配置 DRACO 解压器
         const dracoLoader = new THREE.DRACOLoader();
         dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
-
         const loader = new THREE.GLTFLoader();
         loader.setDRACOLoader(dracoLoader);
 
@@ -162,7 +195,6 @@ async function initApp() {
                 child.add(hitBoxMesh);
             }
 
-            // 💡 扫描我们定义的叙事物体 (去除发光，整体绑定)
             if (child.isMesh) {
                 const meshName = child.name;
                 const parentName = child.parent ? child.parent.name : "";
@@ -170,7 +202,6 @@ async function initApp() {
 
                 for (let key of sortedKeys) {
                     const matchPattern = (name, k) => name === k || name.startsWith(k + '.') || name.startsWith(k + '_');
-
                     if (matchPattern(meshName, key) || matchPattern(parentName, key)) {
                         let interactRoot = matchPattern(parentName, key) ? child.parent : child;
                         if (!interactRoot.userData.message) {
@@ -181,6 +212,17 @@ async function initApp() {
                         child.userData.parentInteract = interactRoot;
                         break;
                     }
+                }
+            }
+
+            // 💡 隐藏所有画框
+            if (child.isMesh && (child.name.startsWith('Frame') || (child.parent && child.parent.name.startsWith('Frame')))) {
+                let frameRoot = child.parent && child.parent.name.startsWith('Frame') ? child.parent : child;
+                if (!frameRoot.userData.isSetupFrame) {
+                    frameRoot.userData.isSetupFrame = true;
+                    frameRoot.userData.initialPosY = frameRoot.position.y;
+                    frameRoot.position.y += 15;
+                    wallFrames.push(frameRoot);
                 }
             }
 
@@ -229,26 +271,41 @@ async function initApp() {
         projectsData.forEach((data, index) => {
             if (index >= 12 || !shelfLocations[index]) return;
             const cartClone = cartPrefab.clone(); const locationInfo = shelfLocations[index];
-            cartClone.position.copy(locationInfo.pos); cartClone.rotation.copy(locationInfo.rot); cartClone.rotateY(Math.PI / 2);
+
+            cartClone.rotation.copy(locationInfo.rot); cartClone.rotateY(Math.PI / 2);
             cartClone.userData = { ...data, initialRotation: cartClone.rotation.clone(), initialPosition: locationInfo.pos.clone(), shelfOriginalRot: locationInfo.rot.clone() };
 
             cartClone.traverse((child) => {
                 if (child.isMesh) {
                     child.castShadow = true; child.receiveShadow = true; child.userData.parentCart = cartClone;
+
                     if (child.material && child.material.name.includes('Color') && data.color) {
-                        child.material = child.material.clone(); child.material.color.setHex(parseInt(data.color, 16));
+                        child.material = child.material.clone();
+                        const hexColor = parseInt(data.color, 16);
+                        child.material.color.setHex(hexColor);
+                        child.material.emissive.setHex(hexColor);
+                        gsap.to(child.material, { emissiveIntensity: 1.8, duration: 0.8 + Math.random() * 0.6, yoyo: true, repeat: -1, ease: "sine.inOut" });
                     }
                 }
             });
-            addBreathingGlow(cartClone, 0.15);
+
+            // 🌟 让所有卡带一开始都老老实实呆在架子上
+            cartClone.position.copy(locationInfo.pos);
+
             scene.add(cartClone); cartridges.push(cartClone);
         });
 
-        // 🌟 一切就绪，淡出加载界面
+        // 淡出加载界面
         loadingTitle.innerText = "SYSTEM READY";
         setTimeout(() => {
             loadingScreen.style.opacity = '0';
             loadingScreen.style.visibility = 'hidden';
+            setTimeout(() => {
+                if (cartridges.length > 0) {
+                    const welcomeCart = cartridges[cartridges.length - 1];
+                    loadCartridge(welcomeCart);
+                }
+            }, 500);
         }, 600);
 
     } catch (error) {
@@ -273,26 +330,31 @@ window.addEventListener('mousemove', (event) => {
     raycaster.setFromCamera(mouse, camera);
 
     const isHoveringTrigger = triggerObject && raycaster.intersectObject(triggerObject, true).length > 0;
-    if (triggerObject) {
+    if (triggerObject && triggerObject.userData.isHovered !== isHoveringTrigger) {
+        triggerObject.userData.isHovered = isHoveringTrigger;
         const scaleMult = isHoveringTrigger ? 1.05 : 1.0;
-        gsap.to(triggerObject.scale, { x: triggerObject.userData.baseScale.x * scaleMult, y: triggerObject.userData.baseScale.y * scaleMult, z: triggerObject.userData.baseScale.z * scaleMult, duration: 0.2 });
+        gsap.to(triggerObject.scale, { x: triggerObject.userData.baseScale.x * scaleMult, y: triggerObject.userData.baseScale.y * scaleMult, z: triggerObject.userData.baseScale.z * scaleMult, duration: 0.2, overwrite: "auto" });
     }
 
     const isHoveringAbout = aboutTrigger && raycaster.intersectObject(aboutTrigger, true).length > 0;
-    if (aboutTrigger) {
+    if (aboutTrigger && aboutTrigger.userData.isHovered !== isHoveringAbout) {
+        aboutTrigger.userData.isHovered = isHoveringAbout;
         const scaleMult = isHoveringAbout ? 1.05 : 1.0;
-        gsap.to(aboutTrigger.scale, { x: aboutTrigger.userData.baseScale.x * scaleMult, y: aboutTrigger.userData.baseScale.y * scaleMult, z: aboutTrigger.userData.baseScale.z * scaleMult, duration: 0.2 });
+        gsap.to(aboutTrigger.scale, { x: aboutTrigger.userData.baseScale.x * scaleMult, y: aboutTrigger.userData.baseScale.y * scaleMult, z: aboutTrigger.userData.baseScale.z * scaleMult, duration: 0.2, overwrite: "auto" });
     }
 
-    // 互动文字物体 (整体放大)
     const interactIntersects = raycaster.intersectObjects(interactTriggers, true);
     const hitInteract = interactIntersects.find(hit => hit.object.userData && hit.object.userData.parentInteract)?.object.userData.parentInteract;
 
-    interactTriggers.forEach(obj => {
-        const isThisHit = (hitInteract === obj);
-        const scaleMult = isThisHit ? 1.05 : 1.0;
-        gsap.to(obj.scale, { x: obj.userData.baseScale.x * scaleMult, y: obj.userData.baseScale.y * scaleMult, z: obj.userData.baseScale.z * scaleMult, duration: 0.2 });
-    });
+    if (hoveredInteractObj !== hitInteract) {
+        if (hoveredInteractObj) {
+            gsap.to(hoveredInteractObj.scale, { x: hoveredInteractObj.userData.baseScale.x, y: hoveredInteractObj.userData.baseScale.y, z: hoveredInteractObj.userData.baseScale.z, duration: 0.2, overwrite: "auto" });
+        }
+        if (hitInteract) {
+            gsap.to(hitInteract.scale, { x: hitInteract.userData.baseScale.x * 1.05, y: hitInteract.userData.baseScale.y * 1.05, z: hitInteract.userData.baseScale.z * 1.05, duration: 0.2, overwrite: "auto" });
+        }
+        hoveredInteractObj = hitInteract;
+    }
 
     if (isHoveringTrigger) {
         document.body.style.cursor = 'zoom-in'; tooltip.innerText = "View 3D Gallery"; tooltip.style.opacity = 1;
@@ -349,10 +411,84 @@ window.addEventListener('click', (event) => {
         tooltip.style.opacity = 0; document.body.style.cursor = 'default'; openAboutModal(); return;
     }
 
+    // 💡 处理文字彩蛋点击 (加入画框飞跃展示逻辑)
+    // 💡 处理文字彩蛋点击 (完美版：画框飞跃展示逻辑)
     const interactIntersects = raycaster.intersectObjects(interactTriggers, true);
     const hitInteract = interactIntersects.find(hit => hit.object.userData && hit.object.userData.parentInteract)?.object.userData.parentInteract;
+
     if (hitInteract) {
+        if (hitInteract.userData.isAnimating) return; // 防抖锁
+
         showToast(hitInteract.userData.message);
+
+        if (hitInteract.name.startsWith('Frame')) {
+            hitInteract.userData.isAnimating = true;
+
+            // 1. 记录它当前的位置和四元数旋转
+            const originalPos = hitInteract.position.clone();
+            const originalQuat = hitInteract.quaternion.clone();
+
+            // 2. 计算摄像机前方 4 个单位的世界坐标，并转换为画框的局部坐标（抵消 15 倍缩放）
+            const offset = new THREE.Vector3(0, -0.3, -4);
+            const targetWorldPos = offset.applyMatrix4(camera.matrixWorld);
+            const targetLocalPos = hitInteract.parent.worldToLocal(targetWorldPos.clone());
+
+            // 3. 算出完美面对摄像机的局部旋转角度
+            const dummy = new THREE.Object3D();
+            hitInteract.parent.add(dummy);
+            dummy.position.copy(targetLocalPos);
+            dummy.lookAt(camera.position);
+            dummy.rotateZ(-Math.PI / 2);
+            const targetLocalQuat = dummy.quaternion.clone();
+            hitInteract.parent.remove(dummy);
+
+            // 🎬 阶段 A：飞到镜头前
+            gsap.to(hitInteract.position, {
+                x: targetLocalPos.x,
+                y: targetLocalPos.y,
+                z: targetLocalPos.z,
+                duration: 0.5,
+                ease: "power2.out"
+            });
+
+            const proxyRot = { t: 0 };
+            gsap.to(proxyRot, {
+                t: 1,
+                duration: 0.2,
+                ease: "power2.out",
+                onUpdate: () => {
+                    // 使用球面线性插值，杜绝乱翻滚
+                    hitInteract.quaternion.slerpQuaternions(originalQuat, targetLocalQuat, proxyRot.t);
+                },
+                onComplete: () => {
+                    const displayTime = 1.5; // 👈 停留 2 秒
+
+                    // 🎬 阶段 B：飞回原处
+                    gsap.to(hitInteract.position, {
+                        x: originalPos.x,
+                        y: originalPos.y,
+                        z: originalPos.z,
+                        duration: 0.8,
+                        delay: displayTime,
+                        ease: "power2.inOut"
+                    });
+
+                    const returnProxyRot = { t: 0 };
+                    gsap.to(returnProxyRot, {
+                        t: 1,
+                        duration: 0.8,
+                        delay: displayTime,
+                        ease: "power2.inOut",
+                        onUpdate: () => {
+                            hitInteract.quaternion.slerpQuaternions(targetLocalQuat, originalQuat, returnProxyRot.t);
+                        },
+                        onComplete: () => {
+                            hitInteract.userData.isAnimating = false; // 解锁
+                        }
+                    });
+                }
+            });
+        }
         return;
     }
 
@@ -377,28 +513,7 @@ function loadCartridge(newCartridge) {
       .to(newCartridge.position, { x: SLOT_POS.x, z: SLOT_POS.z, duration: 0.4 })
       .to(newCartridge.rotation, { x: SLOT_ROT.x, y: SLOT_ROT.y, z: SLOT_ROT.z, duration: 0.4 }, "<")
       .to(newCartridge.position, { y: SLOT_POS.y, duration: 0.2, onComplete: () => {
-          if (tvScreenMat) {
-              const mediaData = newCartridge.userData;
-              tvScreenMat.color.setHex(0xffffff);
-              if (glassMat) { glassMat.emissive.setHex(BLOOM_CONFIG.activeColor); glassMat.emissiveIntensity = BLOOM_CONFIG.activeIntensity; }
-
-              if (mediaData.screenMedia) {
-                  const mediaList = Array.isArray(mediaData.screenMedia) ? mediaData.screenMedia : [mediaData.screenMedia];
-                  if (mediaList.length === 1 && mediaList[0].match(/\.(mp4|webm)$/i)) {
-                      tvVideo.src = mediaList[0]; tvVideo.play();
-                      tvVideo.onloadedmetadata = () => { fitMediaToScreen(tvVideoTexture); tvScreenMat.map = tvVideoTexture; tvScreenMat.emissive = new THREE.Color(0xffffff); tvScreenMat.emissiveMap = tvVideoTexture; tvScreenMat.emissiveIntensity = BLOOM_CONFIG.screenIntensity; tvScreenMat.needsUpdate = true; };
-                  } else {
-                      let currentIndex = 0;
-                      const loadAndShowImage = (url) => { textureLoader.load(url, (tex) => { fitMediaToScreen(tex); tvScreenMat.map = tex; tvScreenMat.emissive = new THREE.Color(0xffffff); tvScreenMat.emissiveMap = tex; tvScreenMat.emissiveIntensity = BLOOM_CONFIG.screenIntensity; tvScreenMat.needsUpdate = true; }); };
-                      loadAndShowImage(mediaList[0]);
-                      if (mediaList.length > 1) { slideshowInterval = setInterval(() => { currentIndex = (currentIndex + 1) % mediaList.length; loadAndShowImage(mediaList[currentIndex]); }, 3000); }
-                  }
-              } else {
-                  tvScreenMat.map = null; tvScreenMat.emissiveMap = null; tvScreenMat.color.setHex(BLOOM_CONFIG.activeColor); tvScreenMat.emissive.setHex(BLOOM_CONFIG.activeColor); tvScreenMat.emissiveIntensity = BLOOM_CONFIG.screenIntensity;
-              }
-              tvScreenMat.needsUpdate = true;
-          }
-          updateUI(newCartridge.userData);
+          activateCartridgeMedia(newCartridge);
       }});
 }
 
@@ -410,6 +525,7 @@ window.ejectCartridge = function(clearUI = true) {
     if (glassMat) { glassMat.emissive.setHex(BLOOM_CONFIG.idleColor); glassMat.emissiveIntensity = BLOOM_CONFIG.idleIntensity; }
     if (clearUI) document.getElementById('ui-panel').classList.remove('active');
 
+    // 弹回自己真正的架子位置
     const pullOutPos = cart.userData.initialPosition.clone();
     const outDir = new THREE.Vector3(0, 0, 1).applyEuler(cart.userData.shelfOriginalRot).normalize();
     pullOutPos.add(outDir.multiplyScalar(ANIM_CONFIG.pullOut * GLOBAL_SCALE));
@@ -507,3 +623,36 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight);
     if (viewerInitialized) { const container = document.getElementById('viewer-canvas-container'); viewerCamera.aspect = container.clientWidth / container.clientHeight; viewerCamera.updateProjectionMatrix(); viewerRenderer.setSize(container.clientWidth, container.clientHeight); }
 });
+
+const toggleFramesBtn = document.getElementById('toggle-frames-btn');
+if (toggleFramesBtn) {
+    toggleFramesBtn.addEventListener('click', () => {
+        if (framesHidden) {
+            // 画框平滑掉落，带有高级阻尼微弹感
+            wallFrames.forEach((frame, idx) => {
+                gsap.to(frame.position, {
+                    y: frame.userData.initialPosY,
+                    duration: 0.6,
+                    ease: "back.out(0.2)",
+                    delay: idx * 0.1,
+                    overwrite: "auto"
+                });
+            });
+            framesHidden = false;
+            toggleFramesBtn.innerText = "Works That Influenced Me";
+        } else {
+            // 画框平滑收回天花板
+            wallFrames.forEach((frame, idx) => {
+                gsap.to(frame.position, {
+                    y: frame.userData.initialPosY + 15,
+                    duration: 0.8,
+                    ease: "power2.inOut",
+                    delay: idx * 0.05,
+                    overwrite: "auto"
+                });
+            });
+            framesHidden = true;
+            toggleFramesBtn.innerText = "Works That Influenced Me";
+        }
+    });
+}

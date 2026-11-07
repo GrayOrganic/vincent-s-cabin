@@ -22,20 +22,20 @@ const ANIM_CONFIG = { hoverOut: 0.05, pullOut: 0.2, liftHeight: 0.2, ejectHover:
 
 const INTERACT_MSGS = {
     "Microphone": "I record most of my voice on it.",
-    "Coffee": "Still warm. ",
-    "Frame": "Loom. Its innovative design shocks me even till today",
+    "Coffee": "Still warm.",
     "Frame1": "Celeste. The game that taught me about games as an art of failure.",
-    "Frame2": "The Witness.The game that showed me how games reflect their creator's charm",
-    "Frame3": "Death Stranding. The game that persuaded 'connection' through mechanics",
-    "Frame4": "NaissanceE. Artistic inspiration. Makes me think of Tsutomu Nihei's works."
+    "Frame2": "The Witness. The game that showed me how games reflect their creator's charm.",
+    "Frame3": "Death Stranding. The game that persuaded 'connection' through mechanics.",
+    "Frame4": "NaissanceE. Artistic inspiration. Makes me think of Tsutomu Nihei's works.",
+    "Frame": "Loom. Its innovative design shocks me even till today."
 };
 
 const BLOOM_CONFIG = { strength: 0.1, radius: 0.2, threshold: 0.3, idleIntensity: 0.05, activeIntensity: 0.05, idleColor: 0x00d2ff, activeColor: 0x000000, glassOpacity: 0.2, screenIntensity: 0.2 };
 
 const LIGHT_CONFIG = {
-    main: { ambientColor: 0xa89677, ambientIntensity: 0.5, spotColor: 0xfac878, spotIntensity: 1.2, posX: 0, posY: 15, posZ: 10 },
+    main: { ambientColor: 0xa89677, ambientIntensity: 0.5, spotColor: 0xfac878, spotIntensity: 1, posX: 0, posY: 15, posZ: 8 },
     viewer: { ambientIntensity: 0.3, dirIntensity: 1.5, posX: 5, posY: 10, posZ: 5, fillIntensity: 0.4, fillPosX: -3, fillPosY: 2, fillPosZ: 5 },
-    sun: { color: 0xffa95c, intensity: 4, posX: -4, posY: 20, posZ: -20 }
+    sun: { color: 0xffa95c, intensity: 4, posX: -4, posY: 15, posZ: -20 }
 };
 
 const ambientLight = new THREE.AmbientLight(LIGHT_CONFIG.main.ambientColor, LIGHT_CONFIG.main.ambientIntensity);
@@ -60,7 +60,7 @@ const composer = new THREE.EffectComposer(renderer);
 composer.addPass(renderScene); composer.addPass(bloomPass);
 
 const cartridges = [];
-const interactTriggers = []; // 存放所有可互动物体
+const interactTriggers = [];
 let activeCartridge = null, hoveredCartridge = null, hoveredInteractObj = null;
 let triggerObject = null, aboutTrigger = null;
 let previewModelsList = [], currentModelIndex = 0;
@@ -97,9 +97,10 @@ function showToast(message) {
     toast.innerText = message;
     toast.classList.add('show');
     if (toastTimeout) clearTimeout(toastTimeout);
-    toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 4000); // 4秒后消失
+    toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 4000);
 }
 
+// ⏳ 获取加载界面的 DOM 元素
 const loadingScreen = document.getElementById('loading-screen');
 const loadingPercent = document.getElementById('loading-percent');
 const progressBar = document.getElementById('progress-bar');
@@ -111,27 +112,25 @@ async function initApp() {
         try { projectsData = await (await fetch('data.json')).json(); } catch (e) {}
         try { previewModelsList = await (await fetch('preview_models.json')).json(); } catch (e) {}
 
+        // 🆕 配置 DRACO 解压器 (主场景)
         const dracoLoader = new THREE.DRACOLoader();
         dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
 
         const loader = new THREE.GLTFLoader();
         loader.setDRACOLoader(dracoLoader);
+
         const loadWithProgress = (url, isMain = false) => loader.loadAsync(url, (xhr) => {
             if (isMain && xhr.total > 0) {
                 const percent = Math.round((xhr.loaded / xhr.total) * 100);
                 loadingPercent.innerText = `${percent}%`;
                 progressBar.style.width = `${percent}%`;
-
-                if (percent === 100) {
-                    loadingTitle.innerText = "MOUNTING ENVIRONMENT...";
-                } else {
-                    loadingTitle.innerText = "DOWNLOADING ASSETS...";
-                }
+                if (percent === 100) { loadingTitle.innerText = "MOUNTING ENVIRONMENT..."; }
+                else { loadingTitle.innerText = "DOWNLOADING ASSETS..."; }
             }
         });
 
         const [mainSceneGltf, cartGltf] = await Promise.all([
-            loadWithProgress('models/main_scene.glb', true), // 追踪主场景进度
+            loadWithProgress('models/main_scene.glb', true),
             loader.loadAsync('models/cartridge.glb')
         ]);
 
@@ -142,47 +141,28 @@ async function initApp() {
 
         mainScene.traverse((child) => {
             if (child.isMesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
-                if (child.material) {
-                    child.material.shadowSide = THREE.DoubleSide;
-                }
+                child.castShadow = true; child.receiveShadow = true;
+                if (child.material) child.material.shadowSide = THREE.DoubleSide;
             }
 
             if (child.name === 'Models' && child.isMesh) {
-                triggerObject = child;
-                child.userData.baseScale = child.scale.clone();
+                triggerObject = child; child.userData.baseScale = child.scale.clone();
                 addBreathingGlow(child, 0.4);
             }
 
             if (child.name.includes('AboutMe') && aboutTrigger === null) {
-                aboutTrigger = child;
-                child.userData.baseScale = child.scale.clone();
+                aboutTrigger = child; child.userData.baseScale = child.scale.clone();
                 addBreathingGlow(child, 0.3);
-
                 const box = new THREE.Box3().setFromObject(child);
-                const size = new THREE.Vector3();
-                box.getSize(size);
-
-                const hitBoxGeo = new THREE.BoxGeometry(
-                    Math.max(size.x * 1.2, 0.5),
-                    Math.max(size.y * 1.2, 0.5),
-                    Math.max(size.z * 1.5, 0.5)
-                );
-                const hitBoxMat = new THREE.MeshBasicMaterial({
-                    transparent: true, opacity: 0, color: 0xff0000, depthWrite: false
-                });
-                const hitBoxMesh = new THREE.Mesh(hitBoxGeo, hitBoxMat);
-                hitBoxMesh.name = "AboutMe_Hitbox";
-
-                const center = new THREE.Vector3();
-                box.getCenter(center);
-                child.worldToLocal(center);
-                hitBoxMesh.position.copy(center);
+                const size = new THREE.Vector3(); box.getSize(size);
+                const hitBoxGeo = new THREE.BoxGeometry(Math.max(size.x * 1.2, 0.5), Math.max(size.y * 1.2, 0.5), Math.max(size.z * 1.5, 0.5));
+                const hitBoxMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, color: 0xff0000, depthWrite: false });
+                const hitBoxMesh = new THREE.Mesh(hitBoxGeo, hitBoxMat); hitBoxMesh.name = "AboutMe_Hitbox";
+                const center = new THREE.Vector3(); box.getCenter(center); child.worldToLocal(center); hitBoxMesh.position.copy(center);
                 child.add(hitBoxMesh);
             }
 
-            // 💡 扫描我们定义的叙事物体 (作为隐藏彩蛋)
+            // 💡 扫描我们定义的叙事物体 (去除发光，整体绑定)
             if (child.isMesh) {
                 const meshName = child.name;
                 const parentName = child.parent ? child.parent.name : "";
@@ -205,29 +185,17 @@ async function initApp() {
             }
 
             if (child.name === 'WindowGlass' && child.isMesh) {
-                child.castShadow = false;
-                child.material = child.material.clone();
-                child.material.transparent = true;
-                child.material.opacity = 0.1;
-                child.material.depthWrite = false;
-                child.material.roughness = 0.1;
-                child.material.metalness = 0.1;
+                child.castShadow = false; child.material = child.material.clone(); child.material.transparent = true; child.material.opacity = 0.1;
+                child.material.depthWrite = false; child.material.roughness = 0.1; child.material.metalness = 0.1;
             }
 
             if (child.name === 'Glass' && child.isMesh) {
-                child.material = child.material.clone();
-                glassMat = child.material;
-                glassMat.transparent = true;
-                glassMat.opacity = BLOOM_CONFIG.glassOpacity;
-                glassMat.emissive = new THREE.Color(BLOOM_CONFIG.idleColor);
-                glassMat.emissiveIntensity = BLOOM_CONFIG.idleIntensity;
+                child.material = child.material.clone(); glassMat = child.material; glassMat.transparent = true;
+                glassMat.opacity = BLOOM_CONFIG.glassOpacity; glassMat.emissive = new THREE.Color(BLOOM_CONFIG.idleColor); glassMat.emissiveIntensity = BLOOM_CONFIG.idleIntensity;
             }
 
             if (child.name === 'Screen' && child.isMesh) {
-                tvScreenMat = child.material;
-                tvScreenMat.color.setHex(0xffffff);
-                tvScreenMat.map = null;
-                tvScreenMat.color.setHex(0x000000);
+                tvScreenMat = child.material; tvScreenMat.color.setHex(0xffffff); tvScreenMat.map = null; tvScreenMat.color.setHex(0x000000);
                 const uvAttribute = child.geometry.attributes.uv;
                 if (uvAttribute) {
                     let minU = Infinity, minV = Infinity, maxU = -Infinity, maxV = -Infinity;
@@ -235,8 +203,7 @@ async function initApp() {
                         minU = Math.min(minU, uvAttribute.getX(i)); maxU = Math.max(maxU, uvAttribute.getX(i));
                         minV = Math.min(minV, uvAttribute.getY(i)); maxV = Math.max(maxV, uvAttribute.getY(i));
                     }
-                    const rangeU = maxU - minU;
-                    const rangeV = maxV - minV;
+                    const rangeU = maxU - minU; const rangeV = maxV - minV;
                     for (let i = 0; i < uvAttribute.count; i++) {
                         uvAttribute.setXY(i, rangeU > 0 ? (uvAttribute.getX(i) - minU) / rangeU : 0.5, rangeV > 0 ? (uvAttribute.getY(i) - minV) / rangeV : 0.5);
                     }
@@ -245,12 +212,9 @@ async function initApp() {
             }
 
             if (child.name === 'card_loc') {
-                child.getWorldPosition(SLOT_POS);
-                const quat = new THREE.Quaternion();
-                child.getWorldQuaternion(quat);
-                SLOT_ROT.setFromQuaternion(quat);
+                child.getWorldPosition(SLOT_POS); const quat = new THREE.Quaternion();
+                child.getWorldQuaternion(quat); SLOT_ROT.setFromQuaternion(quat);
             }
-
             const num = parseInt(child.name);
             if (!isNaN(num) && num >= 1 && num <= 12) {
                 const pos = new THREE.Vector3(); const quat = new THREE.Quaternion();
@@ -264,28 +228,20 @@ async function initApp() {
 
         projectsData.forEach((data, index) => {
             if (index >= 12 || !shelfLocations[index]) return;
-            const cartClone = cartPrefab.clone();
-            const locationInfo = shelfLocations[index];
-
-            cartClone.position.copy(locationInfo.pos);
-            cartClone.rotation.copy(locationInfo.rot);
-            cartClone.rotateY(Math.PI / 2);
-
+            const cartClone = cartPrefab.clone(); const locationInfo = shelfLocations[index];
+            cartClone.position.copy(locationInfo.pos); cartClone.rotation.copy(locationInfo.rot); cartClone.rotateY(Math.PI / 2);
             cartClone.userData = { ...data, initialRotation: cartClone.rotation.clone(), initialPosition: locationInfo.pos.clone(), shelfOriginalRot: locationInfo.rot.clone() };
 
             cartClone.traverse((child) => {
                 if (child.isMesh) {
                     child.castShadow = true; child.receiveShadow = true; child.userData.parentCart = cartClone;
                     if (child.material && child.material.name.includes('Color') && data.color) {
-                        child.material = child.material.clone();
-                        child.material.color.setHex(parseInt(data.color, 16));
+                        child.material = child.material.clone(); child.material.color.setHex(parseInt(data.color, 16));
                     }
                 }
             });
-
             addBreathingGlow(cartClone, 0.15);
-            scene.add(cartClone);
-            cartridges.push(cartClone);
+            scene.add(cartClone); cartridges.push(cartClone);
         });
 
         // 🌟 一切就绪，淡出加载界面
@@ -293,7 +249,7 @@ async function initApp() {
         setTimeout(() => {
             loadingScreen.style.opacity = '0';
             loadingScreen.style.visibility = 'hidden';
-        }, 600); // 预留 0.6 秒让访客看清 100%
+        }, 600);
 
     } catch (error) {
         loadingTitle.innerText = "ERROR LOADING ASSETS";
@@ -316,20 +272,19 @@ window.addEventListener('mousemove', (event) => {
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
 
-    // 1. 画廊
     const isHoveringTrigger = triggerObject && raycaster.intersectObject(triggerObject, true).length > 0;
     if (triggerObject) {
         const scaleMult = isHoveringTrigger ? 1.05 : 1.0;
         gsap.to(triggerObject.scale, { x: triggerObject.userData.baseScale.x * scaleMult, y: triggerObject.userData.baseScale.y * scaleMult, z: triggerObject.userData.baseScale.z * scaleMult, duration: 0.2 });
     }
 
-    // 2. 关于我
     const isHoveringAbout = aboutTrigger && raycaster.intersectObject(aboutTrigger, true).length > 0;
     if (aboutTrigger) {
         const scaleMult = isHoveringAbout ? 1.05 : 1.0;
         gsap.to(aboutTrigger.scale, { x: aboutTrigger.userData.baseScale.x * scaleMult, y: aboutTrigger.userData.baseScale.y * scaleMult, z: aboutTrigger.userData.baseScale.z * scaleMult, duration: 0.2 });
     }
 
+    // 互动文字物体 (整体放大)
     const interactIntersects = raycaster.intersectObjects(interactTriggers, true);
     const hitInteract = interactIntersects.find(hit => hit.object.userData && hit.object.userData.parentInteract)?.object.userData.parentInteract;
 
@@ -339,7 +294,6 @@ window.addEventListener('mousemove', (event) => {
         gsap.to(obj.scale, { x: obj.userData.baseScale.x * scaleMult, y: obj.userData.baseScale.y * scaleMult, z: obj.userData.baseScale.z * scaleMult, duration: 0.2 });
     });
 
-    // 提示文本与指针逻辑层级判断
     if (isHoveringTrigger) {
         document.body.style.cursor = 'zoom-in'; tooltip.innerText = "View 3D Gallery"; tooltip.style.opacity = 1;
         tooltip.style.left = event.clientX + 15 + 'px'; tooltip.style.top = event.clientY + 15 + 'px';
@@ -397,7 +351,6 @@ window.addEventListener('click', (event) => {
 
     const interactIntersects = raycaster.intersectObjects(interactTriggers, true);
     const hitInteract = interactIntersects.find(hit => hit.object.userData && hit.object.userData.parentInteract)?.object.userData.parentInteract;
-
     if (hitInteract) {
         showToast(hitInteract.userData.message);
         return;
@@ -519,7 +472,13 @@ function loadPreviewModel(modelDataObj) {
     while(modelGroup.children.length > 0) modelGroup.remove(modelGroup.children[0]);
     const modelUrl = modelDataObj.url;
     document.getElementById('gallery-title').innerText = modelDataObj.title || "Unknown File"; document.getElementById('gallery-desc').innerText = modelDataObj.desc || "";
-    const loader = new THREE.GLTFLoader(); const hintEl = document.querySelector('.viewer-hint'); hintEl.innerText = `Loading Model ${currentModelIndex + 1}/${previewModelsList.length}...`;
+
+    const dracoLoader = new THREE.DRACOLoader();
+    dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
+    const loader = new THREE.GLTFLoader();
+    loader.setDRACOLoader(dracoLoader);
+
+    const hintEl = document.querySelector('.viewer-hint'); hintEl.innerText = `Loading Model ${currentModelIndex + 1}/${previewModelsList.length}...`;
     loader.load(modelUrl, (gltf) => {
         const model = gltf.scene; const box = new THREE.Box3().setFromObject(model); const center = box.getCenter(new THREE.Vector3()); const size = box.getSize(new THREE.Vector3()); const maxDim = Math.max(size.x, size.y, size.z);
         model.position.set(-center.x, -center.y, -center.z); const wrapper = new THREE.Group(); wrapper.add(model); wrapper.scale.setScalar(maxDim > 0 ? 3.5 / maxDim : 1);

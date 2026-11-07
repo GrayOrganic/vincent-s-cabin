@@ -100,15 +100,38 @@ function showToast(message) {
     toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 4000); // 4秒后消失
 }
 
+const loadingScreen = document.getElementById('loading-screen');
+const loadingPercent = document.getElementById('loading-percent');
+const progressBar = document.getElementById('progress-bar');
+const loadingTitle = document.getElementById('loading-title');
+
 async function initApp() {
     try {
         let projectsData = [];
         try { projectsData = await (await fetch('data.json')).json(); } catch (e) {}
         try { previewModelsList = await (await fetch('preview_models.json')).json(); } catch (e) {}
 
+        const dracoLoader = new THREE.DRACOLoader();
+        dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
+
         const loader = new THREE.GLTFLoader();
+        loader.setDRACOLoader(dracoLoader);
+        const loadWithProgress = (url, isMain = false) => loader.loadAsync(url, (xhr) => {
+            if (isMain && xhr.total > 0) {
+                const percent = Math.round((xhr.loaded / xhr.total) * 100);
+                loadingPercent.innerText = `${percent}%`;
+                progressBar.style.width = `${percent}%`;
+
+                if (percent === 100) {
+                    loadingTitle.innerText = "MOUNTING ENVIRONMENT...";
+                } else {
+                    loadingTitle.innerText = "DOWNLOADING ASSETS...";
+                }
+            }
+        });
+
         const [mainSceneGltf, cartGltf] = await Promise.all([
-            loader.loadAsync('models/main_scene.glb'),
+            loadWithProgress('models/main_scene.glb', true), // 追踪主场景进度
             loader.loadAsync('models/cartridge.glb')
         ]);
 
@@ -119,27 +142,47 @@ async function initApp() {
 
         mainScene.traverse((child) => {
             if (child.isMesh) {
-                child.castShadow = true; child.receiveShadow = true;
-                if (child.material) child.material.shadowSide = THREE.DoubleSide;
+                child.castShadow = true;
+                child.receiveShadow = true;
+                if (child.material) {
+                    child.material.shadowSide = THREE.DoubleSide;
+                }
             }
 
             if (child.name === 'Models' && child.isMesh) {
-                triggerObject = child; child.userData.baseScale = child.scale.clone();
+                triggerObject = child;
+                child.userData.baseScale = child.scale.clone();
                 addBreathingGlow(child, 0.4);
             }
 
             if (child.name.includes('AboutMe') && aboutTrigger === null) {
-                aboutTrigger = child; child.userData.baseScale = child.scale.clone();
+                aboutTrigger = child;
+                child.userData.baseScale = child.scale.clone();
                 addBreathingGlow(child, 0.3);
+
                 const box = new THREE.Box3().setFromObject(child);
-                const size = new THREE.Vector3(); box.getSize(size);
-                const hitBoxGeo = new THREE.BoxGeometry(Math.max(size.x * 1.2, 0.5), Math.max(size.y * 1.2, 0.5), Math.max(size.z * 1.5, 0.5));
-                const hitBoxMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, color: 0xff0000, depthWrite: false });
-                const hitBoxMesh = new THREE.Mesh(hitBoxGeo, hitBoxMat); hitBoxMesh.name = "AboutMe_Hitbox";
-                const center = new THREE.Vector3(); box.getCenter(center); child.worldToLocal(center); hitBoxMesh.position.copy(center);
+                const size = new THREE.Vector3();
+                box.getSize(size);
+
+                const hitBoxGeo = new THREE.BoxGeometry(
+                    Math.max(size.x * 1.2, 0.5),
+                    Math.max(size.y * 1.2, 0.5),
+                    Math.max(size.z * 1.5, 0.5)
+                );
+                const hitBoxMat = new THREE.MeshBasicMaterial({
+                    transparent: true, opacity: 0, color: 0xff0000, depthWrite: false
+                });
+                const hitBoxMesh = new THREE.Mesh(hitBoxGeo, hitBoxMat);
+                hitBoxMesh.name = "AboutMe_Hitbox";
+
+                const center = new THREE.Vector3();
+                box.getCenter(center);
+                child.worldToLocal(center);
+                hitBoxMesh.position.copy(center);
                 child.add(hitBoxMesh);
             }
 
+            // 💡 扫描我们定义的叙事物体 (作为隐藏彩蛋)
             if (child.isMesh) {
                 const meshName = child.name;
                 const parentName = child.parent ? child.parent.name : "";
@@ -150,13 +193,11 @@ async function initApp() {
 
                     if (matchPattern(meshName, key) || matchPattern(parentName, key)) {
                         let interactRoot = matchPattern(parentName, key) ? child.parent : child;
-
                         if (!interactRoot.userData.message) {
                             interactRoot.userData.message = INTERACT_MSGS[key];
                             interactRoot.userData.baseScale = interactRoot.scale.clone();
                             interactTriggers.push(interactRoot);
                         }
-
                         child.userData.parentInteract = interactRoot;
                         break;
                     }
@@ -164,17 +205,29 @@ async function initApp() {
             }
 
             if (child.name === 'WindowGlass' && child.isMesh) {
-                child.castShadow = false; child.material = child.material.clone(); child.material.transparent = true; child.material.opacity = 0.1;
-                child.material.depthWrite = false; child.material.roughness = 0.1; child.material.metalness = 0.1;
+                child.castShadow = false;
+                child.material = child.material.clone();
+                child.material.transparent = true;
+                child.material.opacity = 0.1;
+                child.material.depthWrite = false;
+                child.material.roughness = 0.1;
+                child.material.metalness = 0.1;
             }
 
             if (child.name === 'Glass' && child.isMesh) {
-                child.material = child.material.clone(); glassMat = child.material; glassMat.transparent = true;
-                glassMat.opacity = BLOOM_CONFIG.glassOpacity; glassMat.emissive = new THREE.Color(BLOOM_CONFIG.idleColor); glassMat.emissiveIntensity = BLOOM_CONFIG.idleIntensity;
+                child.material = child.material.clone();
+                glassMat = child.material;
+                glassMat.transparent = true;
+                glassMat.opacity = BLOOM_CONFIG.glassOpacity;
+                glassMat.emissive = new THREE.Color(BLOOM_CONFIG.idleColor);
+                glassMat.emissiveIntensity = BLOOM_CONFIG.idleIntensity;
             }
 
             if (child.name === 'Screen' && child.isMesh) {
-                tvScreenMat = child.material; tvScreenMat.color.setHex(0xffffff); tvScreenMat.map = null; tvScreenMat.color.setHex(0x000000);
+                tvScreenMat = child.material;
+                tvScreenMat.color.setHex(0xffffff);
+                tvScreenMat.map = null;
+                tvScreenMat.color.setHex(0x000000);
                 const uvAttribute = child.geometry.attributes.uv;
                 if (uvAttribute) {
                     let minU = Infinity, minV = Infinity, maxU = -Infinity, maxV = -Infinity;
@@ -182,7 +235,8 @@ async function initApp() {
                         minU = Math.min(minU, uvAttribute.getX(i)); maxU = Math.max(maxU, uvAttribute.getX(i));
                         minV = Math.min(minV, uvAttribute.getY(i)); maxV = Math.max(maxV, uvAttribute.getY(i));
                     }
-                    const rangeU = maxU - minU; const rangeV = maxV - minV;
+                    const rangeU = maxU - minU;
+                    const rangeV = maxV - minV;
                     for (let i = 0; i < uvAttribute.count; i++) {
                         uvAttribute.setXY(i, rangeU > 0 ? (uvAttribute.getX(i) - minU) / rangeU : 0.5, rangeV > 0 ? (uvAttribute.getY(i) - minV) / rangeV : 0.5);
                     }
@@ -191,9 +245,12 @@ async function initApp() {
             }
 
             if (child.name === 'card_loc') {
-                child.getWorldPosition(SLOT_POS); const quat = new THREE.Quaternion();
-                child.getWorldQuaternion(quat); SLOT_ROT.setFromQuaternion(quat);
+                child.getWorldPosition(SLOT_POS);
+                const quat = new THREE.Quaternion();
+                child.getWorldQuaternion(quat);
+                SLOT_ROT.setFromQuaternion(quat);
             }
+
             const num = parseInt(child.name);
             if (!isNaN(num) && num >= 1 && num <= 12) {
                 const pos = new THREE.Vector3(); const quat = new THREE.Quaternion();
@@ -207,22 +264,42 @@ async function initApp() {
 
         projectsData.forEach((data, index) => {
             if (index >= 12 || !shelfLocations[index]) return;
-            const cartClone = cartPrefab.clone(); const locationInfo = shelfLocations[index];
-            cartClone.position.copy(locationInfo.pos); cartClone.rotation.copy(locationInfo.rot); cartClone.rotateY(Math.PI / 2);
+            const cartClone = cartPrefab.clone();
+            const locationInfo = shelfLocations[index];
+
+            cartClone.position.copy(locationInfo.pos);
+            cartClone.rotation.copy(locationInfo.rot);
+            cartClone.rotateY(Math.PI / 2);
+
             cartClone.userData = { ...data, initialRotation: cartClone.rotation.clone(), initialPosition: locationInfo.pos.clone(), shelfOriginalRot: locationInfo.rot.clone() };
 
             cartClone.traverse((child) => {
                 if (child.isMesh) {
                     child.castShadow = true; child.receiveShadow = true; child.userData.parentCart = cartClone;
                     if (child.material && child.material.name.includes('Color') && data.color) {
-                        child.material = child.material.clone(); child.material.color.setHex(parseInt(data.color, 16));
+                        child.material = child.material.clone();
+                        child.material.color.setHex(parseInt(data.color, 16));
                     }
                 }
             });
+
             addBreathingGlow(cartClone, 0.15);
-            scene.add(cartClone); cartridges.push(cartClone);
+            scene.add(cartClone);
+            cartridges.push(cartClone);
         });
-    } catch (error) { console.error("模型加载发生错误:", error); }
+
+        // 🌟 一切就绪，淡出加载界面
+        loadingTitle.innerText = "SYSTEM READY";
+        setTimeout(() => {
+            loadingScreen.style.opacity = '0';
+            loadingScreen.style.visibility = 'hidden';
+        }, 600); // 预留 0.6 秒让访客看清 100%
+
+    } catch (error) {
+        loadingTitle.innerText = "ERROR LOADING ASSETS";
+        loadingTitle.style.color = "#ff4444";
+        console.error("模型加载发生错误:", error);
+    }
 }
 initApp();
 

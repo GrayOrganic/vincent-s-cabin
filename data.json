@@ -153,7 +153,8 @@
         "id": "cart_10",
         "name": "Welcome!",
         "color": "0xaa44ff",
-        "desc": "Welcome to my cabin, have a look around!",
+        "tags": "Welcome!",
+        "desc": "Welcome to my cabin, have a look around! The screen displays costumes for the avatar I drew for myself!",
         "screenMedia": [
             "videos/cart_10/1fb085e19be470d4ac7c0bd40f94835.png",
             "videos/cart_10/4f01df26407736f6bf60d3674df79c7.png",

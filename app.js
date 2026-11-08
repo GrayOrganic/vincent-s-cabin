@@ -22,13 +22,13 @@ const ANIM_CONFIG = { hoverOut: 0.12, pullOut: 0.2, liftHeight: 0.2, ejectHover:
 // 💬 互动文本配置 (环境叙事核心)
 // ==========================================
 const INTERACT_MSGS = {
-    "Microphone": "I record most of my voice on it.",
+    "Microphone": "I record most of my voiceovers on it.",
     "Coffee": "Still warm.",
-    "Frame1": "Celeste. The game that taught me about games as an art of failure.",
-    "Frame2": "The Witness. The game that showed me how games reflect their creator's charm.",
-    "Frame3": "Death Stranding. The game that persuaded 'connection' through mechanics.",
+    "Frame1": "Celeste. A masterclass. An art of failure.",
+    "Frame2": "The Witness. Showed me how games can reflect their creator's mind.",
+    "Frame3": "Death Stranding. It told stories and conveyed ideas through mechanics.",
     "Frame4": "NaissanceE. Artistic inspiration. Makes me think of Tsutomu Nihei's works.",
-    "Frame": "Loom. Its innovative design shocks me even till today."
+    "Frame": "Loom. Its design innovations still amaze me today."
 };
 
 const BLOOM_CONFIG = { strength: 0.1, radius: 0.2, threshold: 0.3, idleIntensity: 0.05, activeIntensity: 0.05, idleColor: 0x00d2ff, activeColor: 0x000000, glassOpacity: 0.2, screenIntensity: 0.2 };
@@ -60,11 +60,18 @@ const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth,
 const composer = new THREE.EffectComposer(renderer);
 composer.addPass(renderScene); composer.addPass(bloomPass);
 
-// 核心互动数据结构
+// ==========================================
+// 💡 核心互动数据结构与全局变量
+// ==========================================
 const cartridges = [];
 const interactTriggers = [];
 const wallFrames = [];
 let framesHidden = true;
+
+// 🌟 画框专属状态锁
+let activeFrame = null;              // 当前展示在屏幕前的画框
+let isFrameTransitioning = false;    // 画框是否正在飞行中 (飞行时屏蔽一切点击)
+let frameAutoCloseTimeout = null;    // 自动回退计时器
 
 let activeCartridge = null, hoveredCartridge = null, hoveredInteractObj = null;
 let triggerObject = null, aboutTrigger = null;
@@ -90,24 +97,22 @@ function addBreathingGlow(obj, maxIntensity = 0.25) {
     obj.traverse(child => {
         if (child.isMesh && child.material && !child.name.includes('Hitbox')) {
             child.material = child.material.clone();
-            child.material.emissive = new THREE.Color(0x287574);
+            child.material.emissive = new THREE.Color(0xff6a00);
             child.material.emissiveIntensity = 0;
             gsap.to(child.material, { emissiveIntensity: maxIntensity, duration: 1.5 + Math.random() * 0.5, yoyo: true, repeat: -1, ease: "sine.inOut" });
         }
     });
 }
 
-function showToast(message) {
+// 🌟 加入支持自定义显示时间的 Toast 系统
+function showToast(message, duration = 4000) {
     const toast = document.getElementById('message-toast');
     toast.innerText = message;
     toast.classList.add('show');
     if (toastTimeout) clearTimeout(toastTimeout);
-    toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 4000);
+    toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, duration);
 }
 
-// ==========================================
-// 📺 独立出来的媒体激活函数 (用于初始化和切换)
-// ==========================================
 function activateCartridgeMedia(cart) {
     if (!cart) return;
     if (tvScreenMat) {
@@ -134,7 +139,6 @@ function activateCartridgeMedia(cart) {
     updateUI(cart.userData);
 }
 
-// ⏳ 获取加载界面的 DOM 元素
 const loadingScreen = document.getElementById('loading-screen');
 const loadingPercent = document.getElementById('loading-percent');
 const progressBar = document.getElementById('progress-bar');
@@ -146,20 +150,16 @@ async function initApp() {
         try { projectsData = await (await fetch('data.json')).json(); } catch (e) {}
         try { previewModelsList = await (await fetch('preview_models.json')).json(); } catch (e) {}
 
-        // 配置 DRACO 解压器
         const dracoLoader = new THREE.DRACOLoader();
         dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
         const loader = new THREE.GLTFLoader();
         loader.setDRACOLoader(dracoLoader);
 
-        // 🌟 修复 GitHub Pages 进度条失效问题
         const loadWithProgress = (url, isMain = false) => loader.loadAsync(url, (xhr) => {
             if (isMain) {
-                // 如果拿不到确切大小(GitHub Pages), 使用预估的 22.3MB (即 23383000 字节)
                 const estimatedTotal = xhr.total > 0 ? xhr.total : 23383000;
                 let percent = Math.round((xhr.loaded / estimatedTotal) * 100);
-                if (percent > 99) percent = 99; // 留 1% 给挂载流程
-
+                if (percent > 99) percent = 99;
                 loadingPercent.innerText = `${percent}%`;
                 progressBar.style.width = `${percent}%`;
 
@@ -176,7 +176,6 @@ async function initApp() {
             loader.loadAsync('models/cartridge.glb')
         ]);
 
-        // 🌟 强制将进度条拉满
         loadingPercent.innerText = `100%`;
         progressBar.style.width = `100%`;
 
@@ -228,7 +227,6 @@ async function initApp() {
                 }
             }
 
-            // 💡 隐藏所有画框
             if (child.isMesh && (child.name.startsWith('Frame') || (child.parent && child.parent.name.startsWith('Frame')))) {
                 let frameRoot = child.parent && child.parent.name.startsWith('Frame') ? child.parent : child;
                 if (!frameRoot.userData.isSetupFrame) {
@@ -302,20 +300,16 @@ async function initApp() {
                 }
             });
 
-            // 🌟 让所有卡带一开始都呆在架子上
             cartClone.position.copy(locationInfo.pos);
-
             scene.add(cartClone); cartridges.push(cartClone);
         });
 
-        // 淡出加载界面
         loadingTitle.innerText = "SYSTEM READY";
         setTimeout(() => {
             loadingScreen.style.opacity = '0';
             loadingScreen.style.visibility = 'hidden';
             setTimeout(() => {
                 if (cartridges.length > 0) {
-                    // 吸入最后一盘卡带作为新手引导教程
                     const welcomeCart = cartridges[cartridges.length - 1];
                     loadCartridge(welcomeCart);
                 }
@@ -339,9 +333,19 @@ window.addEventListener('mousemove', (event) => {
     if (document.getElementById('model-modal').style.display === 'flex') return;
     if (document.getElementById('about-modal').style.display === 'flex') return;
 
+    // 🌟 画框飞行时冻结悬停探测
+    if (isFrameTransitioning) return;
+
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
+
+    // 🌟 如果画框正展示在面前，进入“全屏独占状态”，隐去所有杂乱的光标提示
+    if (activeFrame) {
+        document.body.style.cursor = 'pointer';
+        tooltip.style.opacity = 0;
+        return;
+    }
 
     const isHoveringTrigger = triggerObject && raycaster.intersectObject(triggerObject, true).length > 0;
     if (triggerObject && triggerObject.userData.isHovered !== isHoveringTrigger) {
@@ -403,13 +407,11 @@ window.addEventListener('mousemove', (event) => {
             tooltip.style.opacity = 0; document.body.style.cursor = 'default';
         }
     }
-
-    if ((isHoveringTrigger || isHoveringAbout || hitInteract) && hoveredCartridge && hoveredCartridge !== activeCartridge) {
-        gsap.to(hoveredCartridge.position, { x: hoveredCartridge.userData.initialPosition.x, y: hoveredCartridge.userData.initialPosition.y, z: hoveredCartridge.userData.initialPosition.z, duration: 0.2 });
-        hoveredCartridge = null;
-    }
 });
 
+// ==========================================
+// 💡 全局点击侦听：精细化的事件拦截
+// ==========================================
 window.addEventListener('click', (event) => {
     if (document.getElementById('game-modal').style.display === 'flex') return;
     if (document.getElementById('model-modal').style.display === 'flex') return;
@@ -417,6 +419,25 @@ window.addEventListener('click', (event) => {
 
     raycaster.setFromCamera(mouse, camera);
 
+    // 🌟 1. 画框飞行时，无视任何狂点操作
+    if (isFrameTransitioning) return;
+
+    // 🌟 2. 面前有画时，拦截屏幕上的任何点击
+    if (activeFrame) {
+        closeActiveFrame(); // 点击任何地方都会直接送走面前的画
+
+        // 我们顺手检测一下，刚才这一手是不是点到了"另一幅新画框"
+        const interactIntersects = raycaster.intersectObjects(interactTriggers, true);
+        const hitInteract = interactIntersects.find(hit => hit.object.userData && hit.object.userData.parentInteract)?.object.userData.parentInteract;
+
+        if (hitInteract && hitInteract !== activeFrame && hitInteract.name.startsWith('Frame')) {
+            // 是新画框！排队等旧画框飞走后 (0.8s)，立刻召唤新画框
+            setTimeout(() => { openFrame(hitInteract); }, 800);
+        }
+        return; // 拦截成功，不再触发下面的任何场景互动
+    }
+
+    // 🌟 3. 正常场景操作
     if (triggerObject && raycaster.intersectObject(triggerObject, true).length > 0) {
         tooltip.style.opacity = 0; document.body.style.cursor = 'default'; openModelViewer(); return;
     }
@@ -425,86 +446,14 @@ window.addEventListener('click', (event) => {
         tooltip.style.opacity = 0; document.body.style.cursor = 'default'; openAboutModal(); return;
     }
 
-    // 💡 处理文字彩蛋点击 (完美版：画框飞跃展示逻辑)
     const interactIntersects = raycaster.intersectObjects(interactTriggers, true);
     const hitInteract = interactIntersects.find(hit => hit.object.userData && hit.object.userData.parentInteract)?.object.userData.parentInteract;
 
     if (hitInteract) {
-        if (hitInteract.userData.isAnimating) return; // 防抖锁
-
-        showToast(hitInteract.userData.message);
-
-        // 🌟 专属特效：如果是画框则飞到镜头前
         if (hitInteract.name.startsWith('Frame')) {
-            hitInteract.userData.isAnimating = true;
-
-            // 1. 记录它当前的位置和四元数旋转
-            const originalPos = hitInteract.position.clone();
-            const originalQuat = hitInteract.quaternion.clone();
-
-            // 2. 计算摄像机前方 4 个单位的世界坐标，并转换为画框的局部坐标（抵消 15 倍缩放）
-            const offset = new THREE.Vector3(0, -0.3, -4);
-            const targetWorldPos = offset.applyMatrix4(camera.matrixWorld);
-            const targetLocalPos = hitInteract.parent.worldToLocal(targetWorldPos.clone());
-
-            // 3. 算出完美面对摄像机的局部旋转角度
-            const dummy = new THREE.Object3D();
-            hitInteract.parent.add(dummy);
-            dummy.position.copy(targetLocalPos);
-            dummy.lookAt(camera.position);
-
-            // 核心修复：补偿 Blender 导出时的 90 度轴向偏差
-            dummy.rotateZ(-Math.PI / 2);
-
-            const targetLocalQuat = dummy.quaternion.clone();
-            hitInteract.parent.remove(dummy);
-
-            // 🎬 阶段 A：飞到镜头前
-            gsap.to(hitInteract.position, {
-                x: targetLocalPos.x,
-                y: targetLocalPos.y,
-                z: targetLocalPos.z,
-                duration: 0.8,
-                ease: "power2.out"
-            });
-
-            const proxyRot = { t: 0 };
-            gsap.to(proxyRot, {
-                t: 1,
-                duration: 0.8,
-                ease: "power2.out",
-                onUpdate: () => {
-                    // 使用球面线性插值，杜绝乱翻滚
-                    hitInteract.quaternion.slerpQuaternions(originalQuat, targetLocalQuat, proxyRot.t);
-                },
-                onComplete: () => {
-                    const displayTime = 4.0; // 👈 停留 4 秒，与 Toast 同步
-
-                    // 🎬 阶段 B：飞回原处
-                    gsap.to(hitInteract.position, {
-                        x: originalPos.x,
-                        y: originalPos.y,
-                        z: originalPos.z,
-                        duration: 0.8,
-                        delay: displayTime,
-                        ease: "power2.inOut"
-                    });
-
-                    const returnProxyRot = { t: 0 };
-                    gsap.to(returnProxyRot, {
-                        t: 1,
-                        duration: 0.8,
-                        delay: displayTime,
-                        ease: "power2.inOut",
-                        onUpdate: () => {
-                            hitInteract.quaternion.slerpQuaternions(targetLocalQuat, originalQuat, returnProxyRot.t);
-                        },
-                        onComplete: () => {
-                            hitInteract.userData.isAnimating = false; // 解锁
-                        }
-                    });
-                }
-            });
+            openFrame(hitInteract); // 打开画框
+        } else {
+            showToast(hitInteract.userData.message, 3000); // 打开普通文字彩蛋 (咖啡/麦克风)
         }
         return;
     }
@@ -514,6 +463,93 @@ window.addEventListener('click', (event) => {
         tooltip.style.opacity = 0; hoveredCartridge = null; document.body.style.cursor = 'default'; loadCartridge(hitCart);
     }
 });
+
+// ==========================================
+// 💡 封装的核心交互动画
+// ==========================================
+
+function openFrame(frame) {
+    activeFrame = frame;
+    isFrameTransitioning = true;
+
+    const flyDuration = 0.8;
+    const stayDuration = 2.0; // 👈 缩短了停留时间 (2 秒)
+    const toastDuration = (flyDuration + stayDuration) * 1000; // 👈 文字显示时间完美等于：飞越时间+停留时间
+
+    showToast(frame.userData.message, toastDuration);
+
+    const originalPos = frame.position.clone();
+    const originalQuat = frame.quaternion.clone();
+    frame.userData.originalPos = originalPos;
+    frame.userData.originalQuat = originalQuat;
+
+    const offset = new THREE.Vector3(0, -0.3, -4);
+    const targetWorldPos = offset.applyMatrix4(camera.matrixWorld);
+    const targetLocalPos = frame.parent.worldToLocal(targetWorldPos.clone());
+
+    const dummy = new THREE.Object3D();
+    frame.parent.add(dummy);
+    dummy.position.copy(targetLocalPos);
+    dummy.lookAt(camera.position);
+    dummy.rotateZ(-Math.PI / 2);
+    const targetLocalQuat = dummy.quaternion.clone();
+    frame.parent.remove(dummy);
+
+    gsap.to(frame.position, {
+        x: targetLocalPos.x, y: targetLocalPos.y, z: targetLocalPos.z,
+        duration: flyDuration, ease: "power2.out"
+    });
+
+    const proxyRot = { t: 0 };
+    gsap.to(proxyRot, {
+        t: 1, duration: flyDuration, ease: "power2.out",
+        onUpdate: () => frame.quaternion.slerpQuaternions(originalQuat, targetLocalQuat, proxyRot.t),
+        onComplete: () => {
+            isFrameTransitioning = false;
+            // 倒计时到了自动送回
+            frameAutoCloseTimeout = setTimeout(() => {
+                closeActiveFrame();
+            }, stayDuration * 1000);
+        }
+    });
+}
+
+function closeActiveFrame() {
+    if (!activeFrame) return;
+
+    // 如果是手动关闭的，清除自动关闭的倒计时
+    if (frameAutoCloseTimeout) {
+        clearTimeout(frameAutoCloseTimeout);
+        frameAutoCloseTimeout = null;
+    }
+
+    const frame = activeFrame;
+    activeFrame = null;
+    isFrameTransitioning = true;
+
+    // 手动收回时，强制将底部的提示文字撤掉
+    const toast = document.getElementById('message-toast');
+    toast.classList.remove('show');
+
+    const flyDuration = 0.8;
+
+    gsap.to(frame.position, {
+        x: frame.userData.originalPos.x,
+        y: frame.userData.originalPos.y,
+        z: frame.userData.originalPos.z,
+        duration: flyDuration, ease: "power2.inOut"
+    });
+
+    const startQuat = frame.quaternion.clone();
+    const proxyRot = { t: 0 };
+    gsap.to(proxyRot, {
+        t: 1, duration: flyDuration, ease: "power2.inOut",
+        onUpdate: () => frame.quaternion.slerpQuaternions(startQuat, frame.userData.originalQuat, proxyRot.t),
+        onComplete: () => {
+            isFrameTransitioning = false; // 完全归位，解锁场景互动
+        }
+    });
+}
 
 function loadCartridge(newCartridge) {
     if (activeCartridge) ejectCartridge(false);
@@ -542,7 +578,6 @@ window.ejectCartridge = function(clearUI = true) {
     if (glassMat) { glassMat.emissive.setHex(BLOOM_CONFIG.idleColor); glassMat.emissiveIntensity = BLOOM_CONFIG.idleIntensity; }
     if (clearUI) document.getElementById('ui-panel').classList.remove('active');
 
-    // 弹回自己真正的架子位置
     const pullOutPos = cart.userData.initialPosition.clone();
     const outDir = new THREE.Vector3(0, 0, 1).applyEuler(cart.userData.shelfOriginalRot).normalize();
     pullOutPos.add(outDir.multiplyScalar(ANIM_CONFIG.pullOut * GLOBAL_SCALE));
@@ -644,8 +679,10 @@ window.addEventListener('resize', () => {
 const toggleFramesBtn = document.getElementById('toggle-frames-btn');
 if (toggleFramesBtn) {
     toggleFramesBtn.addEventListener('click', () => {
+        // 🌟 点击UI按钮时，如果有画框展示在屏幕前，强制把它弹回去
+        if (activeFrame) closeActiveFrame();
+
         if (framesHidden) {
-            // 画框平滑掉落，带有高级阻尼微弹感
             wallFrames.forEach((frame, idx) => {
                 gsap.to(frame.position, {
                     y: frame.userData.initialPosY,
@@ -658,7 +695,6 @@ if (toggleFramesBtn) {
             framesHidden = false;
             toggleFramesBtn.innerText = "Works That Influenced Me";
         } else {
-            // 画框平滑收回天花板
             wallFrames.forEach((frame, idx) => {
                 gsap.to(frame.position, {
                     y: frame.userData.initialPosY + 15,

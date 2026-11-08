@@ -14,11 +14,11 @@ body {
 }
 
 #cursor-hint {
-    position: absolute; bottom: 40px; left: 50%;
+    position: absolute; bottom: 80px; left: 50%;
     transform: translateX(-50%);
     font-family: 'VT323', monospace;
-    font-size: 1.5rem;
-    color: rgba(237, 164, 69, 0.8);
+    font-size: 2rem;
+    color: rgba(237, 164, 169, 0.8);
     pointer-events: none; z-index: 5;
     animation: blink 2s infinite;
 }
@@ -146,24 +146,57 @@ button:hover { background: #eda445; color: #111; border-color: #eda445; }
 .about-subtitle { font-family: 'Inter', sans-serif; font-weight: bold; color: #ffbf66; margin-bottom: 30px; letter-spacing: 1px;}
 .about-text { font-family: 'Inter', sans-serif; line-height: 1.6; color: #ddd; font-size: 1.1rem; }
 
+/* 1. 图片容器：改为收缩包裹，并相对定位以支持角标悬浮 */
 .about-images {
+    position: relative;
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 35px;
-    margin-bottom: 30px;
+    gap: 20px; /* 缩小两张照片的间隙，让视觉更紧凑 */
+    width: max-content; /* 强制容器刚好包裹两张照片 */
+    margin: 0 auto 35px auto;
 }
 
+/* 2. 照片通用基础样式 */
 .about-img {
     object-fit: cover;
     border-radius: 12px;
-    border: 2px solid #eda445;
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.3s ease;
 }
 
-.avatar-img { width: 120px; height: 120px; }
-.selfie-img { width: 190px; height: 190px; }
+/* 3. 真实照片：限制绝对高度和比例，防止霸屏 */
+.selfie-img {
+    width: 220px;
+    height: 330px; /* 固定为清爽的竖版比例 */
+    border: 2px solid rgba(237, 164, 69, 0.5); /* 边框稍微柔和一点，降低压迫感 */
+}
+
+/* 4. 🌟 核心魔法：将 Avatar 改为“悬浮角标” */
+.avatar-img {
+    position: absolute;
+    left: -40px; /* 向左突破第一张照片的边界 */
+    bottom: -20px; /* 向下突破底部，打破死板的对齐 */
+    width: 100px;  /* 整体缩小，不再喧宾夺主 */
+    height: 100px;
+    border: 3px solid #eda445;
+    background-color: #1e2128; /* 如果猫咪头像是透明底，这能防止背景穿透 */
+    z-index: 10;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+    border-radius: 14px; /* 保留一点圆角 */
+}
+
+/* 5. 悬浮互动效果优化 */
+.selfie-img:hover {
+    transform: scale(1.05);
+    box-shadow: 0 12px 25px rgba(237, 164, 69, 0.3);
+    z-index: 5; /* 保证悬浮的照片不会被另一张挡住 */
+}
+
+.avatar-img:hover {
+    transform: scale(1.1) rotate(-5deg); /* 头像悬浮时加上一点俏皮的倾斜 */
+    z-index: 11;
+}
 
 .about-img:hover {
     transform: scale(1.05);
@@ -288,24 +321,45 @@ button:hover { background: #eda445; color: #111; border-color: #eda445; }
     50% { opacity: 0.4; }
 }
 
+/* 🖼️ 控制背景画框的 UI 按钮 (升级版：高亮呼吸动效) */
 #toggle-frames-btn {
     position: absolute;
-    top: 30px;
-    left: 40px;
+    top: 60px;
+    left: 80px;
     z-index: 90;
-    padding: 10px 20px;
-    background: rgba(30, 33, 40, 0.85);
-    border: 1px solid #eda445;
+    padding: 18px 25px; /* 增加内边距让按钮更大气 */
+    background: rgba(25, 28, 35, 0.9); /* 加深底色，提高与文字的对比度 */
+    border: 2px solid #eda445; /* 边框加粗 */
     color: #eda445;
     font-family: 'VT323', monospace;
-    font-size: 1.5rem;
-    border-radius: 6px;
+    font-size: 1.6rem; /* 字体稍微加大 */
+    letter-spacing: 1px;
+    border-radius: 8px;
     cursor: pointer;
-    backdrop-filter: blur(5px);
-    transition: all 0.2s;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1); /* 更顺滑的过渡曲线 */
+
+    /* 🌟 核心：加入不断循环的外发光呼吸动画 */
+    animation: btnPulse 2s infinite alternate ease-in-out;
 }
+
+/* 🖱️ 鼠标悬停时的强烈反馈 */
 #toggle-frames-btn:hover {
     background: #eda445;
     color: #111;
+    transform: scale(1.05) translateY(-2px); /* 悬停时微微放大并上浮 */
+    box-shadow: 0 10px 25px rgba(237, 164, 69, 0.6); /* 强烈的实体阴影 */
+    animation: none; /* 悬停时停止呼吸，保持常亮 */
+}
+
+/* 🌟 呼吸光晕动画关键帧 */
+@keyframes btnPulse {
+    0% {
+        box-shadow: 0 0 5px rgba(237, 164, 69, 0.1);
+        text-shadow: 0 0 2px rgba(237, 164, 69, 0);
+    }
+    100% {
+        box-shadow: 0 0 20px rgba(237, 164, 69, 0.6), inset 0 0 10px rgba(237, 164, 69, 0.2);
+        text-shadow: 0 0 8px rgba(237, 164, 69, 0.8);
+    }
 }

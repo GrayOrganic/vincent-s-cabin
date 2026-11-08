@@ -102,7 +102,7 @@ function showToast(message) {
     toast.innerText = message;
     toast.classList.add('show');
     if (toastTimeout) clearTimeout(toastTimeout);
-    toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 1500);
+    toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 4000);
 }
 
 // ==========================================
@@ -152,13 +152,22 @@ async function initApp() {
         const loader = new THREE.GLTFLoader();
         loader.setDRACOLoader(dracoLoader);
 
+        // 🌟 修复 GitHub Pages 进度条失效问题
         const loadWithProgress = (url, isMain = false) => loader.loadAsync(url, (xhr) => {
-            if (isMain && xhr.total > 0) {
-                const percent = Math.round((xhr.loaded / xhr.total) * 100);
+            if (isMain) {
+                // 如果拿不到确切大小(GitHub Pages), 使用预估的 22.3MB (即 23383000 字节)
+                const estimatedTotal = xhr.total > 0 ? xhr.total : 23383000;
+                let percent = Math.round((xhr.loaded / estimatedTotal) * 100);
+                if (percent > 99) percent = 99; // 留 1% 给挂载流程
+
                 loadingPercent.innerText = `${percent}%`;
                 progressBar.style.width = `${percent}%`;
-                if (percent === 100) { loadingTitle.innerText = "MOUNTING ENVIRONMENT..."; }
-                else { loadingTitle.innerText = "DOWNLOADING ASSETS..."; }
+
+                if (percent >= 99) {
+                    loadingTitle.innerText = "MOUNTING ENVIRONMENT...";
+                } else {
+                    loadingTitle.innerText = "DOWNLOADING ASSETS...";
+                }
             }
         });
 
@@ -166,6 +175,10 @@ async function initApp() {
             loadWithProgress('models/main_scene.glb', true),
             loader.loadAsync('models/cartridge.glb')
         ]);
+
+        // 🌟 强制将进度条拉满
+        loadingPercent.innerText = `100%`;
+        progressBar.style.width = `100%`;
 
         const mainScene = mainSceneGltf.scene;
         mainScene.scale.set(GLOBAL_SCALE, GLOBAL_SCALE, GLOBAL_SCALE);
@@ -289,7 +302,7 @@ async function initApp() {
                 }
             });
 
-            // 🌟 让所有卡带一开始都老老实实呆在架子上
+            // 🌟 让所有卡带一开始都呆在架子上
             cartClone.position.copy(locationInfo.pos);
 
             scene.add(cartClone); cartridges.push(cartClone);
@@ -302,6 +315,7 @@ async function initApp() {
             loadingScreen.style.visibility = 'hidden';
             setTimeout(() => {
                 if (cartridges.length > 0) {
+                    // 吸入最后一盘卡带作为新手引导教程
                     const welcomeCart = cartridges[cartridges.length - 1];
                     loadCartridge(welcomeCart);
                 }
@@ -411,7 +425,6 @@ window.addEventListener('click', (event) => {
         tooltip.style.opacity = 0; document.body.style.cursor = 'default'; openAboutModal(); return;
     }
 
-    // 💡 处理文字彩蛋点击 (加入画框飞跃展示逻辑)
     // 💡 处理文字彩蛋点击 (完美版：画框飞跃展示逻辑)
     const interactIntersects = raycaster.intersectObjects(interactTriggers, true);
     const hitInteract = interactIntersects.find(hit => hit.object.userData && hit.object.userData.parentInteract)?.object.userData.parentInteract;
@@ -421,6 +434,7 @@ window.addEventListener('click', (event) => {
 
         showToast(hitInteract.userData.message);
 
+        // 🌟 专属特效：如果是画框则飞到镜头前
         if (hitInteract.name.startsWith('Frame')) {
             hitInteract.userData.isAnimating = true;
 
@@ -438,7 +452,10 @@ window.addEventListener('click', (event) => {
             hitInteract.parent.add(dummy);
             dummy.position.copy(targetLocalPos);
             dummy.lookAt(camera.position);
-            dummy.rotateZ(-Math.PI / 2);
+
+            // 核心修复：补偿 Blender 导出时的 90 度轴向偏差
+            dummy.rotateY(Math.PI / 2);
+
             const targetLocalQuat = dummy.quaternion.clone();
             hitInteract.parent.remove(dummy);
 
@@ -447,21 +464,21 @@ window.addEventListener('click', (event) => {
                 x: targetLocalPos.x,
                 y: targetLocalPos.y,
                 z: targetLocalPos.z,
-                duration: 0.5,
+                duration: 0.8,
                 ease: "power2.out"
             });
 
             const proxyRot = { t: 0 };
             gsap.to(proxyRot, {
                 t: 1,
-                duration: 0.2,
+                duration: 0.8,
                 ease: "power2.out",
                 onUpdate: () => {
                     // 使用球面线性插值，杜绝乱翻滚
                     hitInteract.quaternion.slerpQuaternions(originalQuat, targetLocalQuat, proxyRot.t);
                 },
                 onComplete: () => {
-                    const displayTime = 1.5; // 👈 停留 2 秒
+                    const displayTime = 4.0; // 👈 停留 4 秒，与 Toast 同步
 
                     // 🎬 阶段 B：飞回原处
                     gsap.to(hitInteract.position, {

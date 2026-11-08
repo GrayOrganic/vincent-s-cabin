@@ -454,7 +454,7 @@ window.addEventListener('click', (event) => {
             dummy.lookAt(camera.position);
 
             // 核心修复：补偿 Blender 导出时的 90 度轴向偏差
-            dummy.rotateY(Math.PI / 2);
+            dummy.rotateZ(-Math.PI / 2);
 
             const targetLocalQuat = dummy.quaternion.clone();
             hitInteract.parent.remove(dummy);

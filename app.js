@@ -18,9 +18,6 @@ document.getElementById('canvas-container').appendChild(renderer.domElement);
 const GLOBAL_SCALE = 15.0;
 const ANIM_CONFIG = { hoverOut: 0.12, pullOut: 0.2, liftHeight: 0.2, ejectHover: 0.1, parallaxX: 0.4, parallaxY: 0.3 };
 
-// ==========================================
-// 💬 互动文本配置 (环境叙事核心)
-// ==========================================
 const INTERACT_MSGS = {
     "Microphone": "I record most of my voiceovers on it.",
     "Coffee": "Still warm.",
@@ -60,21 +57,17 @@ const bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth,
 const composer = new THREE.EffectComposer(renderer);
 composer.addPass(renderScene); composer.addPass(bloomPass);
 
-// ==========================================
-// 💡 核心互动数据结构与全局变量
-// ==========================================
 const cartridges = [];
 const interactTriggers = [];
 const wallFrames = [];
 let framesHidden = true;
 
-// 🌟 画框专属状态锁
-let activeFrame = null;              // 当前展示在屏幕前的画框
-let isFrameTransitioning = false;    // 画框是否正在飞行中 (飞行时屏蔽一切点击)
-let frameAutoCloseTimeout = null;    // 自动回退计时器
+let activeFrame = null;
+let isFrameTransitioning = false;
+let frameAutoCloseTimeout = null;
 
 let activeCartridge = null, hoveredCartridge = null, hoveredInteractObj = null;
-let triggerObject = null, aboutTrigger = null;
+let triggerObject = null, aboutTrigger = null, controllerObject = null;
 let previewModelsList = [], currentModelIndex = 0;
 let tvScreenMat = null, glassMat = null;
 const SLOT_POS = new THREE.Vector3(), SLOT_ROT = new THREE.Euler();
@@ -104,7 +97,6 @@ function addBreathingGlow(obj, maxIntensity = 0.25) {
     });
 }
 
-// 🌟 加入支持自定义显示时间的 Toast 系统
 function showToast(message, duration = 4000) {
     const toast = document.getElementById('message-toast');
     toast.innerText = message;
@@ -124,15 +116,45 @@ function activateCartridgeMedia(cart) {
             const mediaList = Array.isArray(mediaData.screenMedia) ? mediaData.screenMedia : [mediaData.screenMedia];
             if (mediaList.length === 1 && mediaList[0].match(/\.(mp4|webm)$/i)) {
                 tvVideo.src = mediaList[0]; tvVideo.play();
-                tvVideo.onloadedmetadata = () => { fitMediaToScreen(tvVideoTexture); tvScreenMat.map = tvVideoTexture; tvScreenMat.emissive = new THREE.Color(0xffffff); tvScreenMat.emissiveMap = tvVideoTexture; tvScreenMat.emissiveIntensity = BLOOM_CONFIG.screenIntensity; tvScreenMat.needsUpdate = true; };
+                tvVideo.onloadedmetadata = () => {
+                    if (cart !== activeCartridge) return;
+
+                    fitMediaToScreen(tvVideoTexture);
+                    tvScreenMat.map = tvVideoTexture;
+                    tvScreenMat.emissive = new THREE.Color(0xffffff);
+                    tvScreenMat.emissiveMap = tvVideoTexture;
+                    tvScreenMat.emissiveIntensity = BLOOM_CONFIG.screenIntensity;
+                    tvScreenMat.needsUpdate = true;
+                };
             } else {
                 let currentIndex = 0;
-                const loadAndShowImage = (url) => { textureLoader.load(url, (tex) => { fitMediaToScreen(tex); tvScreenMat.map = tex; tvScreenMat.emissive = new THREE.Color(0xffffff); tvScreenMat.emissiveMap = tex; tvScreenMat.emissiveIntensity = BLOOM_CONFIG.screenIntensity; tvScreenMat.needsUpdate = true; }); };
+                const loadAndShowImage = (url) => {
+                    textureLoader.load(url, (tex) => {
+                        if (cart !== activeCartridge) return;
+
+                        fitMediaToScreen(tex);
+                        tvScreenMat.map = tex;
+                        tvScreenMat.emissive = new THREE.Color(0xffffff);
+                        tvScreenMat.emissiveMap = tex;
+                        tvScreenMat.emissiveIntensity = BLOOM_CONFIG.screenIntensity;
+                        tvScreenMat.needsUpdate = true;
+                    });
+                };
                 loadAndShowImage(mediaList[0]);
-                if (mediaList.length > 1) { slideshowInterval = setInterval(() => { currentIndex = (currentIndex + 1) % mediaList.length; loadAndShowImage(mediaList[currentIndex]); }, 3000); }
+                if (mediaList.length > 1) {
+                    slideshowInterval = setInterval(() => {
+                        if (cart !== activeCartridge) return;
+                        currentIndex = (currentIndex + 1) % mediaList.length;
+                        loadAndShowImage(mediaList[currentIndex]);
+                    }, 3000);
+                }
             }
         } else {
-            tvScreenMat.map = null; tvScreenMat.emissiveMap = null; tvScreenMat.color.setHex(BLOOM_CONFIG.activeColor); tvScreenMat.emissive.setHex(BLOOM_CONFIG.activeColor); tvScreenMat.emissiveIntensity = BLOOM_CONFIG.screenIntensity;
+            tvScreenMat.map = null;
+            tvScreenMat.emissiveMap = null;
+            tvScreenMat.color.setHex(BLOOM_CONFIG.activeColor);
+            tvScreenMat.emissive.setHex(BLOOM_CONFIG.activeColor);
+            tvScreenMat.emissiveIntensity = BLOOM_CONFIG.screenIntensity;
         }
         tvScreenMat.needsUpdate = true;
     }
@@ -193,6 +215,35 @@ async function initApp() {
             if (child.name === 'Models' && child.isMesh) {
                 triggerObject = child; child.userData.baseScale = child.scale.clone();
                 addBreathingGlow(child, 0.4);
+            }
+
+            const isControllerMatch = child.name.includes('Controller') || (child.parent && child.parent.name.includes('Controller'));
+            if (isControllerMatch && child.isMesh && controllerObject === null) {
+                let rootObj = (child.parent && child.parent.name.includes('Controller')) ? child.parent : child;
+
+                controllerObject = rootObj;
+                rootObj.userData.baseScale = rootObj.scale.clone();
+                addBreathingGlow(rootObj, 0.3);
+
+                const box = new THREE.Box3().setFromObject(rootObj);
+                const size = new THREE.Vector3(); box.getSize(size);
+
+                const hitBoxGeo = new THREE.BoxGeometry(
+                    Math.max(size.x * 1.5, 0.5),
+                    Math.max(size.y * 1.5, 0.5),
+                    Math.max(size.z * 1.5, 0.5)
+                );
+
+                const hitBoxMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
+                const hitBoxMesh = new THREE.Mesh(hitBoxGeo, hitBoxMat);
+                hitBoxMesh.name = "Controller_Hitbox";
+
+                const center = new THREE.Vector3();
+                box.getCenter(center);
+                rootObj.worldToLocal(center);
+                hitBoxMesh.position.copy(center);
+
+                rootObj.add(hitBoxMesh);
             }
 
             if (child.name.includes('AboutMe') && aboutTrigger === null) {
@@ -319,7 +370,6 @@ async function initApp() {
     } catch (error) {
         loadingTitle.innerText = "ERROR LOADING ASSETS";
         loadingTitle.style.color = "#ff4444";
-        console.error("模型加载发生错误:", error);
     }
 }
 initApp();
@@ -333,14 +383,12 @@ window.addEventListener('mousemove', (event) => {
     if (document.getElementById('model-modal').style.display === 'flex') return;
     if (document.getElementById('about-modal').style.display === 'flex') return;
 
-    // 🌟 画框飞行时冻结悬停探测
     if (isFrameTransitioning) return;
 
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
 
-    // 🌟 如果画框正展示在面前，进入“全屏独占状态”，隐去所有杂乱的光标提示
     if (activeFrame) {
         document.body.style.cursor = 'pointer';
         tooltip.style.opacity = 0;
@@ -361,6 +409,13 @@ window.addEventListener('mousemove', (event) => {
         gsap.to(aboutTrigger.scale, { x: aboutTrigger.userData.baseScale.x * scaleMult, y: aboutTrigger.userData.baseScale.y * scaleMult, z: aboutTrigger.userData.baseScale.z * scaleMult, duration: 0.2, overwrite: "auto" });
     }
 
+    const isHoveringController = controllerObject && raycaster.intersectObject(controllerObject, true).length > 0;
+    if (controllerObject && controllerObject.userData.isHovered !== isHoveringController) {
+        controllerObject.userData.isHovered = isHoveringController;
+        const scaleMult = isHoveringController ? 1.05 : 1.0;
+        gsap.to(controllerObject.scale, { x: controllerObject.userData.baseScale.x * scaleMult, y: controllerObject.userData.baseScale.y * scaleMult, z: controllerObject.userData.baseScale.z * scaleMult, duration: 0.2, overwrite: "auto" });
+    }
+
     const interactIntersects = raycaster.intersectObjects(interactTriggers, true);
     const hitInteract = interactIntersects.find(hit => hit.object.userData && hit.object.userData.parentInteract)?.object.userData.parentInteract;
 
@@ -379,6 +434,15 @@ window.addEventListener('mousemove', (event) => {
         tooltip.style.left = event.clientX + 15 + 'px'; tooltip.style.top = event.clientY + 15 + 'px';
     } else if (isHoveringAbout) {
         document.body.style.cursor = 'pointer'; tooltip.innerText = "About Me"; tooltip.style.opacity = 1;
+        tooltip.style.left = event.clientX + 15 + 'px'; tooltip.style.top = event.clientY + 15 + 'px';
+    } else if (isHoveringController) {
+        document.body.style.cursor = 'pointer';
+        if (activeCartridge && activeCartridge.userData.gameUrl) {
+            tooltip.innerText = "Play Game: " + activeCartridge.userData.name;
+        } else {
+            tooltip.innerText = "Game Controller";
+        }
+        tooltip.style.opacity = 1;
         tooltip.style.left = event.clientX + 15 + 'px'; tooltip.style.top = event.clientY + 15 + 'px';
     } else if (hitInteract) {
         document.body.style.cursor = 'pointer'; tooltip.innerText = "Inspect"; tooltip.style.opacity = 1;
@@ -409,9 +473,6 @@ window.addEventListener('mousemove', (event) => {
     }
 });
 
-// ==========================================
-// 💡 全局点击侦听：精细化的事件拦截
-// ==========================================
 window.addEventListener('click', (event) => {
     if (document.getElementById('game-modal').style.display === 'flex') return;
     if (document.getElementById('model-modal').style.display === 'flex') return;
@@ -419,25 +480,20 @@ window.addEventListener('click', (event) => {
 
     raycaster.setFromCamera(mouse, camera);
 
-    // 🌟 1. 画框飞行时，无视任何狂点操作
     if (isFrameTransitioning) return;
 
-    // 🌟 2. 面前有画时，拦截屏幕上的任何点击
     if (activeFrame) {
-        closeActiveFrame(); // 点击任何地方都会直接送走面前的画
+        closeActiveFrame();
 
-        // 我们顺手检测一下，刚才这一手是不是点到了"另一幅新画框"
         const interactIntersects = raycaster.intersectObjects(interactTriggers, true);
         const hitInteract = interactIntersects.find(hit => hit.object.userData && hit.object.userData.parentInteract)?.object.userData.parentInteract;
 
         if (hitInteract && hitInteract !== activeFrame && hitInteract.name.startsWith('Frame')) {
-            // 是新画框！排队等旧画框飞走后 (0.8s)，立刻召唤新画框
             setTimeout(() => { openFrame(hitInteract); }, 800);
         }
-        return; // 拦截成功，不再触发下面的任何场景互动
+        return;
     }
 
-    // 🌟 3. 正常场景操作
     if (triggerObject && raycaster.intersectObject(triggerObject, true).length > 0) {
         tooltip.style.opacity = 0; document.body.style.cursor = 'default'; openModelViewer(); return;
     }
@@ -446,14 +502,28 @@ window.addEventListener('click', (event) => {
         tooltip.style.opacity = 0; document.body.style.cursor = 'default'; openAboutModal(); return;
     }
 
+    if (controllerObject && raycaster.intersectObject(controllerObject, true).length > 0) {
+        tooltip.style.opacity = 0; document.body.style.cursor = 'default';
+        if (activeCartridge) {
+            if (activeCartridge.userData.gameUrl) {
+                playGame();
+            } else {
+                showToast("This project does not have a playable game.", 3000);
+            }
+        } else {
+            showToast("Please insert a game cartridge first.", 3000);
+        }
+        return;
+    }
+
     const interactIntersects = raycaster.intersectObjects(interactTriggers, true);
     const hitInteract = interactIntersects.find(hit => hit.object.userData && hit.object.userData.parentInteract)?.object.userData.parentInteract;
 
     if (hitInteract) {
         if (hitInteract.name.startsWith('Frame')) {
-            openFrame(hitInteract); // 打开画框
+            openFrame(hitInteract);
         } else {
-            showToast(hitInteract.userData.message, 3000); // 打开普通文字彩蛋 (咖啡/麦克风)
+            showToast(hitInteract.userData.message, 3000);
         }
         return;
     }
@@ -464,17 +534,13 @@ window.addEventListener('click', (event) => {
     }
 });
 
-// ==========================================
-// 💡 封装的核心交互动画
-// ==========================================
-
 function openFrame(frame) {
     activeFrame = frame;
     isFrameTransitioning = true;
 
     const flyDuration = 0.8;
-    const stayDuration = 2.0; // 👈 缩短了停留时间 (2 秒)
-    const toastDuration = (flyDuration + stayDuration) * 1000; // 👈 文字显示时间完美等于：飞越时间+停留时间
+    const stayDuration = 2.0;
+    const toastDuration = (flyDuration + stayDuration) * 1000;
 
     showToast(frame.userData.message, toastDuration);
 
@@ -506,7 +572,6 @@ function openFrame(frame) {
         onUpdate: () => frame.quaternion.slerpQuaternions(originalQuat, targetLocalQuat, proxyRot.t),
         onComplete: () => {
             isFrameTransitioning = false;
-            // 倒计时到了自动送回
             frameAutoCloseTimeout = setTimeout(() => {
                 closeActiveFrame();
             }, stayDuration * 1000);
@@ -517,7 +582,6 @@ function openFrame(frame) {
 function closeActiveFrame() {
     if (!activeFrame) return;
 
-    // 如果是手动关闭的，清除自动关闭的倒计时
     if (frameAutoCloseTimeout) {
         clearTimeout(frameAutoCloseTimeout);
         frameAutoCloseTimeout = null;
@@ -527,7 +591,6 @@ function closeActiveFrame() {
     activeFrame = null;
     isFrameTransitioning = true;
 
-    // 手动收回时，强制将底部的提示文字撤掉
     const toast = document.getElementById('message-toast');
     toast.classList.remove('show');
 
@@ -546,7 +609,7 @@ function closeActiveFrame() {
         t: 1, duration: flyDuration, ease: "power2.inOut",
         onUpdate: () => frame.quaternion.slerpQuaternions(startQuat, frame.userData.originalQuat, proxyRot.t),
         onComplete: () => {
-            isFrameTransitioning = false; // 完全归位，解锁场景互动
+            isFrameTransitioning = false;
         }
     });
 }
@@ -573,14 +636,27 @@ function loadCartridge(newCartridge) {
 window.ejectCartridge = function(clearUI = true) {
     if (!activeCartridge) return;
     const cart = activeCartridge; activeCartridge = null;
+
     if (slideshowInterval) { clearInterval(slideshowInterval); slideshowInterval = null; }
-    if (tvScreenMat) { tvVideo.pause(); tvVideo.src = ""; tvScreenMat.map = null; tvScreenMat.emissiveMap = null; tvScreenMat.color.setHex(0x000000); tvScreenMat.emissive.setHex(0x000000); tvScreenMat.needsUpdate = true; }
+
+    if (tvScreenMat) {
+        tvVideo.pause();
+        tvVideo.removeAttribute('src');
+        tvVideo.load();
+
+        tvScreenMat.map = null;
+        tvScreenMat.emissiveMap = null;
+        tvScreenMat.color.setHex(0x000000);
+        tvScreenMat.emissive.setHex(0x000000);
+        tvScreenMat.needsUpdate = true;
+    }
     if (glassMat) { glassMat.emissive.setHex(BLOOM_CONFIG.idleColor); glassMat.emissiveIntensity = BLOOM_CONFIG.idleIntensity; }
     if (clearUI) document.getElementById('ui-panel').classList.remove('active');
 
     const pullOutPos = cart.userData.initialPosition.clone();
     const outDir = new THREE.Vector3(0, 0, 1).applyEuler(cart.userData.shelfOriginalRot).normalize();
     pullOutPos.add(outDir.multiplyScalar(ANIM_CONFIG.pullOut * GLOBAL_SCALE));
+
     const tl = gsap.timeline();
     tl.to(cart.position, { y: SLOT_POS.y + (ANIM_CONFIG.liftHeight * GLOBAL_SCALE), duration: 0.2 })
       .to(cart.position, { x: pullOutPos.x, y: pullOutPos.y + (ANIM_CONFIG.ejectHover * GLOBAL_SCALE), z: pullOutPos.z, duration: 0.4 })
@@ -606,7 +682,12 @@ function updateUI(data) {
     const linkBtn = document.getElementById('link-btn');
     if (data.link && data.link.trim() !== "" && data.link !== itchUrl) { linkBtn.style.display = 'block'; linkBtn.onclick = () => window.open(data.link, '_blank'); } else { linkBtn.style.display = 'none'; }
 
-    document.getElementById('eject-btn').style.display = 'block';
+    const ejectBtn = document.getElementById('eject-btn');
+    if (ejectBtn) {
+        ejectBtn.style.display = 'block';
+        ejectBtn.onclick = () => window.ejectCartridge(true);
+    }
+
     ui.classList.add('active');
 }
 
@@ -665,8 +746,10 @@ function animate() {
     requestAnimationFrame(animate);
     const targetX = baseCameraPos.x + (mouse.x * ANIM_CONFIG.parallaxX);
     const targetY = baseCameraPos.y + (mouse.y * ANIM_CONFIG.parallaxY);
-    camera.position.x += (targetX - camera.position.x) * 0.05; camera.position.y += (targetY - camera.position.y) * 0.05;
-    camera.lookAt(0, 0.1 * GLOBAL_SCALE, 0); composer.render();
+    camera.position.x += (targetX - camera.position.x) * 0.05;
+    camera.position.y += (targetY - camera.position.y) * 0.05;
+    camera.lookAt(0, 0.1 * GLOBAL_SCALE, 0);
+    composer.render();
 }
 animate();
 
@@ -679,7 +762,7 @@ window.addEventListener('resize', () => {
 const toggleFramesBtn = document.getElementById('toggle-frames-btn');
 if (toggleFramesBtn) {
     toggleFramesBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); // 🌟 核心修复：阻止点击事件穿透到 3D 场景引起错乱
+        e.stopPropagation();
 
         if (typeof activeFrame !== 'undefined' && activeFrame) closeActiveFrame();
 
@@ -711,12 +794,11 @@ if (toggleFramesBtn) {
 
 const highlightGamesBtn = document.getElementById('highlight-games-btn');
 if (highlightGamesBtn) {
-    let isGamesAnimating = false; // 🌟 1. 新增一把专属动画锁
+    let isGamesAnimating = false;
 
     highlightGamesBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); // 拦截穿透
+        e.stopPropagation();
 
-        // 🌟 2. 如果当前正在播放动画，直接无视连击
         if (isGamesAnimating) return;
         isGamesAnimating = true;
 
@@ -731,16 +813,14 @@ if (highlightGamesBtn) {
             const outDir = new THREE.Vector3(0, 0, 1).applyEuler(cart.userData.shelfOriginalRot).normalize();
             slideOutPos.add(outDir.multiplyScalar(ANIM_CONFIG.pullOut * GLOBAL_SCALE * 1.5));
 
-            // 🌟 3. 强制重置起点：不管它当前在哪，每次弹起前都强制按回架子上最深处
             cart.position.copy(cart.userData.initialPosition);
 
             gsap.to(cart.position, {
                 x: slideOutPos.x, y: slideOutPos.y, z: slideOutPos.z,
                 duration: 0.3, yoyo: true, repeat: 1,
-                delay: idx * 0.05, ease: "power2.out", overwrite: true, // 强制覆盖
+                delay: idx * 0.05, ease: "power2.out", overwrite: true,
                 onComplete: () => {
                     completedCount++;
-                    // 🌟 4. 当最后一盘卡带顺利弹回时，解锁按钮
                     if (completedCount === activeCount) {
                         isGamesAnimating = false;
                     }
@@ -748,20 +828,17 @@ if (highlightGamesBtn) {
             });
         });
 
-        // 兜底机制：如果恰好没有卡带需要播放动画，立即解锁
         if (activeCount === 0) isGamesAnimating = false;
     });
 }
 
-// 3. 高亮 3D 模型 (雕塑仅原地跳跃，去掉放大)
 const highlightModelsBtn = document.getElementById('highlight-models-btn');
 if (highlightModelsBtn) {
     highlightModelsBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); // 拦截穿透
+        e.stopPropagation();
         if (triggerObject && !triggerObject.userData.isAnimating) {
             triggerObject.userData.isAnimating = true;
 
-            // 仅保留 Y 轴的跳跃动作，并在动画结束时解锁
             gsap.to(triggerObject.position, {
                 y: triggerObject.position.y + 0.1,
                 duration: 0.3,
@@ -776,57 +853,45 @@ if (highlightModelsBtn) {
     });
 }
 
-// 4. 🆕 高亮 About Me (防穿模版：向外弹出 -> 原地华丽转圈 -> 收回)
 const highlightAboutBtn = document.getElementById('highlight-about-btn');
 if (highlightAboutBtn) {
     highlightAboutBtn.addEventListener('click', (e) => {
-        e.stopPropagation(); // 拦截穿透
+        e.stopPropagation();
 
         if (aboutTrigger && !aboutTrigger.userData.isAnimating) {
             aboutTrigger.userData.isAnimating = true;
 
             const originalPos = aboutTrigger.position.clone();
-
-            // 🌟 1. 坐标转换：计算向外（摄像机方向）移动的安全坐标
             const worldPos = new THREE.Vector3();
-            aboutTrigger.getWorldPosition(worldPos); // 获取它在 3D 世界的真实绝对位置
+            aboutTrigger.getWorldPosition(worldPos);
 
-            // 算出一条从物体指向摄像机的射线方向
             const dirToCamera = new THREE.Vector3().subVectors(camera.position, worldPos).normalize();
-
-            // 沿着这个方向往外拔出一段距离 (这里的 3 是移出的强度，如果还穿模可以加大到 4 或 5)
             const targetWorldPos = worldPos.clone().add(dirToCamera.multiplyScalar(3));
-
-            // 将计算好的世界坐标转换回它自身的局部坐标，喂给 GSAP
             const targetLocalPos = aboutTrigger.parent.worldToLocal(targetWorldPos);
 
-            // 🌟 2. 使用 GSAP 时间轴 (Timeline) 串联连招动作
             const tl = gsap.timeline({
                 onComplete: () => { aboutTrigger.userData.isAnimating = false; }
             });
 
-            // 动作 A：先向外悬浮拔出
             tl.to(aboutTrigger.position, {
                 x: targetLocalPos.x,
                 y: targetLocalPos.y,
                 z: targetLocalPos.z,
                 duration: 0.1,
-                ease: "back.out(1.2)" // 拔出时带一点微弹的阻尼感
+                ease: "back.out(1.2)"
             })
-            // 动作 B：在空中完成 360 度自转
             .to(aboutTrigger.rotation, {
                 y: aboutTrigger.rotation.y + (Math.PI * 2),
                 duration: 0.6,
                 ease: "power2.inOut"
-            }, "+=0.1") // "+=0.1" 表示拔出后稍微停顿 0.1 秒再转，机械感更强
-            // 动作 C：转完后原路镶嵌回去
+            }, "+=0.1")
             .to(aboutTrigger.position, {
                 x: originalPos.x,
                 y: originalPos.y,
                 z: originalPos.z,
                 duration: 0.1,
                 ease: "power2.inOut"
-            }, "+=0.1"); // 转完也停顿 0.1 秒再收回
+            }, "+=0.1");
         }
     });
 }

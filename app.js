@@ -687,7 +687,7 @@ if (toggleFramesBtn) {
             wallFrames.forEach((frame, idx) => {
                 gsap.to(frame.position, {
                     y: frame.userData.initialPosY,
-                    duration: 0.6,
+                    duration: 0.5,
                     ease: "back.out(0.2)",
                     delay: idx * 0.1,
                     overwrite: "auto"
@@ -709,60 +709,124 @@ if (toggleFramesBtn) {
     });
 }
 
-// 2. 高亮卡带 (波浪式弹出)
 const highlightGamesBtn = document.getElementById('highlight-games-btn');
 if (highlightGamesBtn) {
+    let isGamesAnimating = false; // 🌟 1. 新增一把专属动画锁
+
     highlightGamesBtn.addEventListener('click', (e) => {
         e.stopPropagation(); // 拦截穿透
+
+        // 🌟 2. 如果当前正在播放动画，直接无视连击
+        if (isGamesAnimating) return;
+        isGamesAnimating = true;
+
+        let activeCount = 0;
+        let completedCount = 0;
+
         cartridges.forEach((cart, idx) => {
             if (cart === activeCartridge) return;
+            activeCount++;
 
             const slideOutPos = cart.userData.initialPosition.clone();
             const outDir = new THREE.Vector3(0, 0, 1).applyEuler(cart.userData.shelfOriginalRot).normalize();
             slideOutPos.add(outDir.multiplyScalar(ANIM_CONFIG.pullOut * GLOBAL_SCALE * 1.5));
 
+            // 🌟 3. 强制重置起点：不管它当前在哪，每次弹起前都强制按回架子上最深处
+            cart.position.copy(cart.userData.initialPosition);
+
             gsap.to(cart.position, {
                 x: slideOutPos.x, y: slideOutPos.y, z: slideOutPos.z,
                 duration: 0.3, yoyo: true, repeat: 1,
-                delay: idx * 0.05, ease: "power2.out", overwrite: "auto"
+                delay: idx * 0.05, ease: "power2.out", overwrite: true, // 强制覆盖
+                onComplete: () => {
+                    completedCount++;
+                    // 🌟 4. 当最后一盘卡带顺利弹回时，解锁按钮
+                    if (completedCount === activeCount) {
+                        isGamesAnimating = false;
+                    }
+                }
             });
         });
+
+        // 兜底机制：如果恰好没有卡带需要播放动画，立即解锁
+        if (activeCount === 0) isGamesAnimating = false;
     });
 }
 
-// 3. 高亮 3D 模型 (雕塑原地跳跃放大)
+// 3. 高亮 3D 模型 (雕塑仅原地跳跃，去掉放大)
 const highlightModelsBtn = document.getElementById('highlight-models-btn');
 if (highlightModelsBtn) {
     highlightModelsBtn.addEventListener('click', (e) => {
         e.stopPropagation(); // 拦截穿透
         if (triggerObject && !triggerObject.userData.isAnimating) {
             triggerObject.userData.isAnimating = true;
+
+            // 仅保留 Y 轴的跳跃动作，并在动画结束时解锁
             gsap.to(triggerObject.position, {
-                y: triggerObject.position.y + 0.1, duration: 0.3, yoyo: true, repeat: 1, ease: "power2.out"
-            });
-            gsap.to(triggerObject.scale, {
-                x: triggerObject.userData.baseScale.x * 1.3, y: triggerObject.userData.baseScale.y * 1.3, z: triggerObject.userData.baseScale.z * 1.3,
-                duration: 0.3, yoyo: true, repeat: 1, onComplete: () => { triggerObject.userData.isAnimating = false; }
+                y: triggerObject.position.y + 0.1,
+                duration: 0.3,
+                yoyo: true,
+                repeat: 1,
+                ease: "power2.out",
+                onComplete: () => {
+                    triggerObject.userData.isAnimating = false;
+                }
             });
         }
     });
 }
 
-// 4. 🆕 高亮 About Me (相框原地华丽转一圈)
+// 4. 🆕 高亮 About Me (防穿模版：向外弹出 -> 原地华丽转圈 -> 收回)
 const highlightAboutBtn = document.getElementById('highlight-about-btn');
 if (highlightAboutBtn) {
     highlightAboutBtn.addEventListener('click', (e) => {
         e.stopPropagation(); // 拦截穿透
+
         if (aboutTrigger && !aboutTrigger.userData.isAnimating) {
             aboutTrigger.userData.isAnimating = true;
 
-            // 使用 GSAP 让它绕着 Y 轴旋转 360 度 (Math.PI * 2)
-            gsap.to(aboutTrigger.rotation, {
-                y: aboutTrigger.rotation.y + (Math.PI * 2),
-                duration: 1.0,
-                ease: "power2.inOut",
+            const originalPos = aboutTrigger.position.clone();
+
+            // 🌟 1. 坐标转换：计算向外（摄像机方向）移动的安全坐标
+            const worldPos = new THREE.Vector3();
+            aboutTrigger.getWorldPosition(worldPos); // 获取它在 3D 世界的真实绝对位置
+
+            // 算出一条从物体指向摄像机的射线方向
+            const dirToCamera = new THREE.Vector3().subVectors(camera.position, worldPos).normalize();
+
+            // 沿着这个方向往外拔出一段距离 (这里的 3 是移出的强度，如果还穿模可以加大到 4 或 5)
+            const targetWorldPos = worldPos.clone().add(dirToCamera.multiplyScalar(3));
+
+            // 将计算好的世界坐标转换回它自身的局部坐标，喂给 GSAP
+            const targetLocalPos = aboutTrigger.parent.worldToLocal(targetWorldPos);
+
+            // 🌟 2. 使用 GSAP 时间轴 (Timeline) 串联连招动作
+            const tl = gsap.timeline({
                 onComplete: () => { aboutTrigger.userData.isAnimating = false; }
             });
+
+            // 动作 A：先向外悬浮拔出
+            tl.to(aboutTrigger.position, {
+                x: targetLocalPos.x,
+                y: targetLocalPos.y,
+                z: targetLocalPos.z,
+                duration: 0.1,
+                ease: "back.out(1.2)" // 拔出时带一点微弹的阻尼感
+            })
+            // 动作 B：在空中完成 360 度自转
+            .to(aboutTrigger.rotation, {
+                y: aboutTrigger.rotation.y + (Math.PI * 2),
+                duration: 0.6,
+                ease: "power2.inOut"
+            }, "+=0.1") // "+=0.1" 表示拔出后稍微停顿 0.1 秒再转，机械感更强
+            // 动作 C：转完后原路镶嵌回去
+            .to(aboutTrigger.position, {
+                x: originalPos.x,
+                y: originalPos.y,
+                z: originalPos.z,
+                duration: 0.1,
+                ease: "power2.inOut"
+            }, "+=0.1"); // 转完也停顿 0.1 秒再收回
         }
     });
 }

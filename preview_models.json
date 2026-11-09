@@ -55,11 +55,6 @@
         "desc": "Maze model, inspired by House of Leaves"
     },
     {
-        "url": "preview_models/Note.glb",
-        "title": "Note",
-        "desc": "Sticky note model from One Billion Seconds"
-    },
-    {
         "url": "preview_models/Oak.glb",
         "title": "Oak",
         "desc": "Oak tree model from render practice"

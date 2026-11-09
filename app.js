@@ -678,9 +678,10 @@ window.addEventListener('resize', () => {
 
 const toggleFramesBtn = document.getElementById('toggle-frames-btn');
 if (toggleFramesBtn) {
-    toggleFramesBtn.addEventListener('click', () => {
-        // 🌟 点击UI按钮时，如果有画框展示在屏幕前，强制把它弹回去
-        if (activeFrame) closeActiveFrame();
+    toggleFramesBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // 🌟 核心修复：阻止点击事件穿透到 3D 场景引起错乱
+
+        if (typeof activeFrame !== 'undefined' && activeFrame) closeActiveFrame();
 
         if (framesHidden) {
             wallFrames.forEach((frame, idx) => {
@@ -693,7 +694,6 @@ if (toggleFramesBtn) {
                 });
             });
             framesHidden = false;
-            toggleFramesBtn.innerText = "Works That Influenced Me";
         } else {
             wallFrames.forEach((frame, idx) => {
                 gsap.to(frame.position, {
@@ -705,7 +705,64 @@ if (toggleFramesBtn) {
                 });
             });
             framesHidden = true;
-            toggleFramesBtn.innerText = "Works That Influenced Me";
+        }
+    });
+}
+
+// 2. 高亮卡带 (波浪式弹出)
+const highlightGamesBtn = document.getElementById('highlight-games-btn');
+if (highlightGamesBtn) {
+    highlightGamesBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // 拦截穿透
+        cartridges.forEach((cart, idx) => {
+            if (cart === activeCartridge) return;
+
+            const slideOutPos = cart.userData.initialPosition.clone();
+            const outDir = new THREE.Vector3(0, 0, 1).applyEuler(cart.userData.shelfOriginalRot).normalize();
+            slideOutPos.add(outDir.multiplyScalar(ANIM_CONFIG.pullOut * GLOBAL_SCALE * 1.5));
+
+            gsap.to(cart.position, {
+                x: slideOutPos.x, y: slideOutPos.y, z: slideOutPos.z,
+                duration: 0.3, yoyo: true, repeat: 1,
+                delay: idx * 0.05, ease: "power2.out", overwrite: "auto"
+            });
+        });
+    });
+}
+
+// 3. 高亮 3D 模型 (雕塑原地跳跃放大)
+const highlightModelsBtn = document.getElementById('highlight-models-btn');
+if (highlightModelsBtn) {
+    highlightModelsBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // 拦截穿透
+        if (triggerObject && !triggerObject.userData.isAnimating) {
+            triggerObject.userData.isAnimating = true;
+            gsap.to(triggerObject.position, {
+                y: triggerObject.position.y + 0.1, duration: 0.3, yoyo: true, repeat: 1, ease: "power2.out"
+            });
+            gsap.to(triggerObject.scale, {
+                x: triggerObject.userData.baseScale.x * 1.3, y: triggerObject.userData.baseScale.y * 1.3, z: triggerObject.userData.baseScale.z * 1.3,
+                duration: 0.3, yoyo: true, repeat: 1, onComplete: () => { triggerObject.userData.isAnimating = false; }
+            });
+        }
+    });
+}
+
+// 4. 🆕 高亮 About Me (相框原地华丽转一圈)
+const highlightAboutBtn = document.getElementById('highlight-about-btn');
+if (highlightAboutBtn) {
+    highlightAboutBtn.addEventListener('click', (e) => {
+        e.stopPropagation(); // 拦截穿透
+        if (aboutTrigger && !aboutTrigger.userData.isAnimating) {
+            aboutTrigger.userData.isAnimating = true;
+
+            // 使用 GSAP 让它绕着 Y 轴旋转 360 度 (Math.PI * 2)
+            gsap.to(aboutTrigger.rotation, {
+                y: aboutTrigger.rotation.y + (Math.PI * 2),
+                duration: 1.0,
+                ease: "power2.inOut",
+                onComplete: () => { aboutTrigger.userData.isAnimating = false; }
+            });
         }
     });
 }

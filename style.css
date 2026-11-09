@@ -42,7 +42,7 @@ body {
 }
 
 #ui-panel {
-    position: absolute; top: 50%; right: 5%;
+    position: absolute; top: 50%; left: 5%;
     transform: translateY(-50%);
     width: 350px;
     background: rgba(30, 33, 40, 0.85);
@@ -322,35 +322,6 @@ button:hover { background: #eda445; color: #111; border-color: #eda445; }
 }
 
 /* 🖼️ 控制背景画框的 UI 按钮 (升级版：高亮呼吸动效) */
-#toggle-frames-btn {
-    position: absolute;
-    top: 60px;
-    left: 80px;
-    z-index: 90;
-    padding: 18px 25px; /* 增加内边距让按钮更大气 */
-    background: rgba(25, 28, 35, 0.9); /* 加深底色，提高与文字的对比度 */
-    border: 2px solid #eda445; /* 边框加粗 */
-    color: #eda445;
-    font-family: 'VT323', monospace;
-    font-size: 1.6rem; /* 字体稍微加大 */
-    letter-spacing: 1px;
-    border-radius: 8px;
-    cursor: pointer;
-    backdrop-filter: blur(10px);
-    transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1); /* 更顺滑的过渡曲线 */
-
-    /* 🌟 核心：加入不断循环的外发光呼吸动画 */
-    animation: btnPulse 2s infinite alternate ease-in-out;
-}
-
-/* 🖱️ 鼠标悬停时的强烈反馈 */
-#toggle-frames-btn:hover {
-    background: #eda445;
-    color: #111;
-    transform: scale(1.05) translateY(-2px); /* 悬停时微微放大并上浮 */
-    box-shadow: 0 10px 25px rgba(237, 164, 69, 0.6); /* 强烈的实体阴影 */
-    animation: none; /* 悬停时停止呼吸，保持常亮 */
-}
 
 /* 🌟 呼吸光晕动画关键帧 */
 @keyframes btnPulse {
@@ -362,4 +333,52 @@ button:hover { background: #eda445; color: #111; border-color: #eda445; }
         box-shadow: 0 0 20px rgba(237, 164, 69, 0.6), inset 0 0 10px rgba(237, 164, 69, 0.2);
         text-shadow: 0 0 8px rgba(237, 164, 69, 0.8);
     }
+}
+/* 🎛️ 左上角全局导航面板 */
+/* 🎛️ 左上角全局导航面板 */
+/* 🎛️ 左上角全局导航面板 (沉浸式 HUD 风格) */
+/* 🎛️ 左上角全局导航面板 */
+#nav-controls {
+    position: absolute;
+    top: 30px;
+    left: 40px;
+    z-index: 90;
+    display: flex;
+    flex-direction: row;
+    gap: 15px; /* 按钮之间的间距 */
+    flex-wrap: wrap;
+}
+
+/* 🌟 沉浸式游戏 HUD 线框按钮 */
+.nav-btn-ui {
+    padding: 6px 16px;
+    background: rgba(10, 12, 15, 0.5); /* 极暗的半透明底，稍微压住背后的3D场景，提供对比度 */
+    border: 3px solid rgba(237, 164, 69, 0.25); /* 极细、暗淡的边框，划定每个按钮的清晰界限 */
+    border-radius: 0; /* 🚨 绝对直角！去除任何现代网页的圆角感 */
+
+    color: #eda445;
+    font-family: 'VT323', monospace;
+    font-size: 1.6rem;
+    letter-spacing: 1.5px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+    outline: none;
+
+    /* 保留文字的硬阴影 */
+    text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.9);
+}
+
+/* 🖱️ 悬停状态：高亮激活反馈 */
+.nav-btn-ui:hover {
+    background: rgba(237, 164, 69, 0.15); /* 框内泛起微弱的橙光，像被选中的菜单项 */
+    border: 1px solid rgba(237, 164, 69, 0.9); /* 边框瞬间高亮变实 */
+    color: #ffdaaa; /* 文字变亮 */
+
+    text-shadow:
+        0 0 12px rgba(237, 164, 69, 1),
+        2px 2px 0px rgba(0, 0, 0, 0.9);
+
+    transform: translateY(-3px); /* 微微上浮 */
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4); /* 底部增加投影，拉开空间感 */
 }
